@@ -1,0 +1,41 @@
+{
+  "data": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "target_column": "policy_lapse",
+    "sample_data_size": 1000
+  },
+  "preprocessing": {
+    "apply_smote_enn": true,
+    "feature_engineering": true,
+    "scaling": true,
+    "encoding": true
+  },
+  "model": {
+    "enable_hyperparameter_tuning": false,
+    "cv_folds": 5,
+    "ensemble_method": "stacking",
+    "base_models": ["logistic_regression", "xgboost"]
+  },
+  "api": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "reload": false
+  },
+  "dashboard": {
+    "host": "127.0.0.1",
+    "port": 8050,
+    "debug": false,
+    "refresh_interval": 30000
+  },
+  "mlflow": {
+    "experiment_name": "insurance_policy_lapse_prediction",
+    "tracking_uri": "file:./mlruns"
+  },
+  "paths": {
+    "data_dir": "data",
+    "models_dir": "models",
+    "logs_dir": "logs",
+    "reports_dir": "reports"
+  }
+}
