@@ -1,91 +1,85 @@
-# Insurance Policy Lapse Risk Prediction System
+# Lapse Predictor
 
-A comprehensive ML-driven system for predicting insurance policy lapse risk using Logistic Regression, XGBoost, and SMOTE-ENN.
+Lapse Predictor is a machine learning–based web application designed to estimate the probability of life insurance policy lapse. The system processes real insurance datasets, identifies important factors influencing lapse behaviour, and provides real-time predictions through an integrated Flask API and Streamlit interface.
+
+---
+
+## Project Overview
+
+This project implements multiple machine learning models, including Logistic Regression, Random Forest, and XGBoost, trained on a real Kaggle insurance dataset. The solution includes data preprocessing, class imbalance handling using SMOTE-ENN, prediction serving, and a lightweight web dashboard.
+
+---
 
 ## Features
 
-- **Ensemble Learning**: Combines Logistic Regression and XGBoost for superior accuracy
-- **SMOTE-ENN**: Advanced class balancing technique for handling imbalanced datasets
-- **Real-time Prediction**: Fast API-based prediction service
-- **Model Monitoring**: Comprehensive performance tracking and visualization
-- **Interactive Dashboard**: Web-based monitoring interface
-- **Feature Engineering**: Insurance-specific feature extraction and selection
-- **Kaggle Integration**: Support for real insurance datasets
-- **Easy to Use**: Simple Python scripts for quick testing and deployment
+- Machine learning models for lapse risk prediction  
+- Data preprocessing and feature engineering tailored for insurance datasets  
+- Class imbalance handling using SMOTE-ENN  
+- Flask API for real-time predictions  
+- Streamlit dashboard for user interaction  
+- Explanation of key predictive features  
+- Support for retraining with new data  
+
+---
 
 ## Quick Start
 
-1. Install dependencies:
+### 1. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the complete demo:
+### 2. Train or retrain the model
 ```bash
-python demo.py
+python simple_kaggle_integration.py
 ```
 
-3. Run quick tests:
+### 3. Start the API
 ```bash
-python test_system.py
+python api.py
 ```
 
-4. Integrate with Kaggle datasets:
+### 4. Launch the dashboard
 ```bash
-python kaggle_integration.py
+python dashboard_app.py
 ```
 
-5. Start the prediction API:
-```bash
-python src/api/app.py
-```
-
-6. Launch the monitoring dashboard:
-```bash
-python src/dashboard/app.py
-```
+---
 
 ## Project Structure
 
 ```
+├── api.py
+├── dashboard_app.py
+├── simple_kaggle_integration.py
+├── models/
+├── data/
 ├── src/
-│   ├── data/           # Data processing and feature engineering
-│   ├── models/         # ML model implementations
-│   ├── training/      # Training pipelines and hyperparameter tuning
-│   ├── api/           # FastAPI prediction service
-│   ├── dashboard/     # Monitoring dashboard
-│   └── utils/         # Utility functions and configurations
-├── data/              # Sample datasets and processed data
-├── models/            # Trained model artifacts
-├── notebooks/         # Jupyter notebooks for analysis
-└── tests/            # Unit tests
+└── requirements.txt
 ```
 
-## Model Performance
+---
 
-The ensemble model (Logistic Regression + XGBoost + SMOTE-ENN) achieves:
-- **AUC Score**: 0.95+ (typically 0.95-0.99)
-- **Accuracy**: 90%+ 
-- **Precision**: 85%+
-- **Recall**: 90%+
-- **F1-Score**: 87%+
+## Model Performance Summary
 
-*Performance may vary based on data quality and characteristics*
+Performance varies depending on dataset quality and distributions, but typical results from XGBoost on the processed Kaggle dataset include:
 
-## Insurance Data Features
+- AUC: 0.68–0.75  
+- Accuracy: around 0.64  
+- Recall: approximately 0.70  
+- Top features: policy tenure, policy type, channel attributes, premium-to-benefit ratio  
 
-The system works with insurance policy data including:
-- **Demographics**: Age, gender, marital status, education
-- **Financial**: Income, policy amount, premium amount, credit score
-- **Policy Details**: Type, tenure, payment frequency/method
-- **Risk Factors**: Claims history, health conditions, smoking status
-- **Employment**: Employment status and stability
+---
 
 ## API Endpoints
 
-- `POST /predict` - Get policy lapse risk prediction
-- `GET /health` - Health check endpoint
-- `GET /metrics` - Model performance metrics
+### POST `/predict_lapse`
+Submits policy attributes and returns the predicted lapse probability and risk category.
+
+### GET `/health`
+Health check endpoint for API availability.
+
+---
 
 ## License
 
