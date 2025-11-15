@@ -1,116 +1,144 @@
-import joblib
-import pandas as pd
-import numpy as np
+import json
+import os
+from datetime import datetime
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-import sys
-import warnings
+import joblib
+import numpy as np
+import pandas as pd
 
-warnings.filterwarnings("ignore")
+# ------------------------------------------------------------
+# Load Model, Scaler, and Feature Order
+# ------------------------------------------------------------
+MODEL_PATH = "models/xgboost_optimized_model.joblib"
+SCALER_PATH = "models/scaler.joblib"
+FEATURE_ORDER_PATH = "models/training_feature_order.joblib"
 
-# ============================================================
-# 1️⃣ LOAD MODEL + SCALER
-# ============================================================
+model = joblib.load(MODEL_PATH)
+scaler = joblib.load(SCALER_PATH)
+feature_order = joblib.load(FEATURE_ORDER_PATH)
 
+# ------------------------------------------------------------
+# Logging Setup
+# ------------------------------------------------------------
+os.makedirs("logs", exist_ok=True)
+PREDICTION_LOG = "logs/predictions.log"
+FEEDBACK_LOG = "logs/feedback.log"
+
+def log_prediction(data):
+    with open(PREDICTION_LOG, "a") as f:
+        f.write(json.dumps(data) + "\n")
+
+def log_feedback(data):
+    with open(FEEDBACK_LOG, "a") as f:
+        f.write(json.dumps(data) + "\n")
+
+# ------------------------------------------------------------
+# Flask App
+# ------------------------------------------------------------
 app = Flask(__name__)
-CORS(app)
 
-try:
-    MODEL = joblib.load("models/xgboost_optimized_model.joblib")
-    SCALER = joblib.load("models/scaler.joblib")
-
-    try:
-        FEATURE_NAMES = joblib.load("models/training_feature_order.joblib")
-        print(f"✓ Loaded feature order from training_feature_order.joblib ({len(FEATURE_NAMES)} features)")
-    except:
-        FEATURE_NAMES = [
-            'age', 'gender', 'policy_type_1', 'policy_type_2',
-            'policy_amount', 'premium_amount', 'policy_tenure_years',
-            'policy_tenure_decimal', 'channel1', 'channel2', 'channel3',
-            'substandard_risk', 'number_of_advance_premium', 'initial_benefit',
-            'premium_to_benefit_ratio', 'age_squared', 'premium_squared', 'benefit_squared'
-        ]
-        print("⚠️ No training_feature_order.joblib found — using default feature order")
-
-    print("✓ Model and Scaler loaded successfully.")
-
-except Exception as e:
-    print(f"❌ ERROR loading model/scaler: {e}")
-    sys.exit(1)
-
-# ============================================================
-# 2️⃣ PREPROCESS FUNCTION
-# ============================================================
-
-def preprocess_input(data_dict):
-    """
-    Apply the same preprocessing and scaling as training.
-    """
-    df = pd.DataFrame([data_dict])
-
-    # Feature engineering (must match training)
-    df["premium_to_benefit_ratio"] = df["premium_amount"] / (df["policy_amount"] + 1)
-    df["age_squared"] = df["age"] ** 2
-    df["premium_squared"] = df["premium_amount"] ** 2
-    df["benefit_squared"] = df["policy_amount"] ** 2
-
-    # Align order
-    X = df[FEATURE_NAMES]
-
-    # Scale
-    X_scaled = SCALER.transform(X)
-    return X_scaled
-
-
-# ============================================================
-# 3️⃣ ROUTES
-# ============================================================
-
+# ------------------------------------------------------------
+# Health Check
+# ------------------------------------------------------------
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "model_loaded": True})
+    return jsonify({
+        "status": "ok",
+        "model_loaded": True,
+        "model_type": "XGBoost (14 feature model)"
+    })
 
-
+# ------------------------------------------------------------
+# Prediction Endpoint
+# ------------------------------------------------------------
 @app.route("/predict_lapse", methods=["POST"])
 def predict_lapse():
     try:
-        data = request.get_json(force=True)
+        user_input = request.get_json()
 
-        # Preprocess
-        X_scaled = preprocess_input(data)
+        # ensure correct feature order
+        df = pd.DataFrame([user_input], columns=feature_order)
 
-        # Predict probability
-        prob = float(MODEL.predict_proba(X_scaled)[:, 1][0])
+        # scale input
+        scaled = scaler.transform(df)
 
-        # Risk classification
-        if prob < 0.3:
-            risk_level = "Low"
-        elif prob < 0.6:
-            risk_level = "Medium"
+        # model prediction
+        proba = float(model.predict_proba(scaled)[0][1])   # probability of lapse
+
+        # classify
+        if proba < 0.30:
+            risk = "Low"
+        elif proba < 0.70:
+            risk = "Medium"
         else:
-            risk_level = "High"
+            risk = "High"
 
-        print(f"[PREDICT] Probability={prob:.4f} → Risk={risk_level}")
+        # log the prediction
+        record = {
+            "timestamp": datetime.now().isoformat(),
+            "input": user_input,
+            "predicted_probability": proba,
+            "risk_level": risk
+        }
+        log_prediction(record)
 
         return jsonify({
             "status": "success",
-            "policy_risk_score": round(prob, 4),
-            "lapse_probability_percent": round(prob * 100, 2),
-            "risk_level": risk_level,
-            "model_used": "Optimized XGBoost"
+            "model_used": "Optimized XGBoost (14F)",
+            "policy_risk_score": round(proba, 4),
+            "lapse_probability_percent": round(proba * 100, 2),
+            "risk_level": risk
         })
 
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Prediction failed: {e}"
-        }), 400
+        return jsonify({"status": "error", "message": str(e)}), 500
 
+# ------------------------------------------------------------
+# Feedback Endpoint
+# ------------------------------------------------------------
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    data = request.get_json()
+    data["timestamp"] = datetime.now().isoformat()
+    log_feedback(data)
+    return jsonify({"status": "success", "message": "Feedback stored"})
 
-# ============================================================
-# 4️⃣ RUN
-# ============================================================
+# ------------------------------------------------------------
+# Model Stats Endpoint
+# ------------------------------------------------------------
+@app.route("/model_stats", methods=["GET"])
+def model_stats():
+    if not os.path.exists(PREDICTION_LOG):
+        return jsonify({"status": "error", "message": "No logs found"}), 404
 
+    records = []
+    with open(PREDICTION_LOG, "r") as f:
+        for line in f:
+            try:
+                records.append(json.loads(line))
+            except:
+                continue
+
+    if not records:
+        return jsonify({"status": "error", "message": "Log file empty"}), 404
+
+    probabilities = [r["predicted_probability"] for r in records]
+    risk_levels = [r["risk_level"] for r in records]
+
+    stats = {
+        "total_predictions": len(probabilities),
+        "average_predicted_risk": float(np.mean(probabilities)),
+        "high_risk_count": risk_levels.count("High"),
+        "medium_risk_count": risk_levels.count("Medium"),
+        "low_risk_count": risk_levels.count("Low"),
+        "saved_customers_estimate": risk_levels.count("High") + risk_levels.count("Medium")
+    }
+
+    return jsonify(stats)
+
+# ------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------
 if __name__ == "__main__":
-    print("API starting on http://127.0.0.1:5000")
-    app.run(debug=False)
+    print("API running at http://127.0.0.1:5000")
+    app.run(host="0.0.0.0", port=5000)

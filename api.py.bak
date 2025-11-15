@@ -1,0 +1,149 @@
+import os
+import json
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import joblib
+
+# ---------------------------------------------------------
+# 1. FLASK APP INITIALIZATION
+# ---------------------------------------------------------
+app = Flask(__name__)
+CORS(app)
+
+# ---------------------------------------------------------
+# 2. LOAD MODEL + SCALER + FEATURE ORDER
+# ---------------------------------------------------------
+MODEL_PATH = "models/xgboost_optimized_model.joblib"
+SCALER_PATH = "models/scaler.joblib"
+FEATURE_ORDER_PATH = "models/training_feature_order.joblib"
+
+try:
+    model = joblib.load(MODEL_PATH)
+    scaler = joblib.load(SCALER_PATH)
+
+    if os.path.exists(FEATURE_ORDER_PATH):
+        FEATURE_NAMES = joblib.load(FEATURE_ORDER_PATH)
+        print("✓ Loaded training feature order.")
+    else:
+        print("⚠️ No training_feature_order.joblib found — using fallback.")
+        FEATURE_NAMES = [
+            "age", "gender", "policy_type_1", "policy_type_2",
+            "policy_amount", "premium_amount", "policy_tenure_years",
+            "policy_tenure_decimal", "channel1", "channel2", "channel3",
+            "substandard_risk", "number_of_advance_premium",
+            "initial_benefit",
+            "premium_to_benefit_ratio", "age_squared",
+            "premium_squared", "benefit_squared"
+        ]
+
+    print("✓ Model and Scaler loaded successfully.")
+
+except Exception as e:
+    print("❌ Failed to load model/scaler:", e)
+    raise e
+
+
+# ---------------------------------------------------------
+# 3. LOGGING FUNCTION
+# ---------------------------------------------------------
+def log_prediction(input_data, probability, risk_level):
+    os.makedirs("logs", exist_ok=True)
+
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "input": input_data,
+        "predicted_probability": float(probability),
+        "risk_level": risk_level
+    }
+
+    with open("logs/predictions.log", "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+# ---------------------------------------------------------
+# 4. HEALTH CHECK
+# ---------------------------------------------------------
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "model_loaded": True})
+
+
+# ---------------------------------------------------------
+# 5. PREDICTION ENDPOINT
+# ---------------------------------------------------------
+@app.route("/predict_lapse", methods=["POST"])
+def predict_lapse():
+    try:
+        data = request.json
+
+        # Step A — Feature Engineering
+        data["premium_to_benefit_ratio"] = (
+            float(data["premium_amount"]) / float(data["policy_amount"])
+            if float(data["policy_amount"]) != 0 else 0
+        )
+
+        data["age_squared"] = float(data["age"]) ** 2
+        data["premium_squared"] = float(data["premium_amount"]) ** 2
+        data["benefit_squared"] = float(data["policy_amount"]) ** 2
+
+        # Step B — Create DataFrame with correct column order
+        df = pd.DataFrame([[data[col] for col in FEATURE_NAMES]], columns=FEATURE_NAMES)
+
+        # Step C — Scale numerical features
+        X_scaled = scaler.transform(df)
+
+        # Step D — Predict
+        prob = float(model.predict_proba(X_scaled)[0][1])
+
+        # Step E — Categorize risk
+        if prob >= 0.60:
+            risk = "High"
+        elif prob >= 0.20:
+            risk = "Medium"
+        else:
+            risk = "Low"
+
+        # Step F — LOG the prediction
+        log_prediction(data, prob, risk)
+
+        return jsonify({
+            "status": "success",
+            "policy_risk_score": prob,
+            "lapse_probability_percent": round(prob * 100, 2),
+            "risk_level": risk,
+            "model_used": "Optimized XGBoost"
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ---------------------------------------------------------
+# 6. FEEDBACK ENDPOINT (for business accuracy tracking)
+# ---------------------------------------------------------
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    try:
+        feedback_data = request.json    # {"timestamp": "....", "actual_lapsed": 1}
+
+        os.makedirs("logs", exist_ok=True)
+
+        with open("logs/feedback.log", "a") as f:
+            f.write(json.dumps(feedback_data) + "\n")
+
+        return jsonify({"status": "recorded", "message": "Feedback saved"})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ---------------------------------------------------------
+# 7. RUN APP
+# ---------------------------------------------------------
+if __name__ == "__main__":
+    print("API starting on http://127.0.0.1:5000")
+    app.run(host="127.0.0.1", port=5000, debug=False)
