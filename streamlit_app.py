@@ -16,57 +16,68 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
-CUSTOM_CSS = """
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+
 <style>
-
-:root {
-    --main-bg: #0A1C33;   /* dark navy */
-    --sidebar-bg: #122A47; /* lighter navy */
-    --btn-green: #b2f7b1;
-    --btn-green-hover: #9be99a;
-}
-
-/* MAIN APP BACKGROUND */
-[data-testid="stAppViewContainer"] {
-    background-color: var(--main-bg) !important;
-}
-
-/* SIDEBAR BACKGROUND */
-[data-testid="stSidebar"] {
-    background-color: var(--sidebar-bg) !important;
-}
-
-/* ALL TEXT COLOR FIX */
-[data-testid="stAppViewContainer"], 
-[data-testid="stSidebar"], 
-[data-testid="stHeader"], 
-[data-testid="stToolbar"], 
-* {
-    color: white !important;
+html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* ALL BUTTONS */
-button, .stButton>button {
-    background-color: var(--btn-green) !important;
+/* Main background */
+[data-testid="stAppViewContainer"] {
+    background-color: #06223d !important; /* dark navy */
+}
+
+/* Sidebar background - lighter navy */
+[data-testid="stSidebar"] {
+    background-color: #0b3257 !important;
+}
+
+/* REMOVE RANDOM HOVER TEXT */
+[data-testid="stHeader"] div:first-child {
+    display: none !important;
+}
+
+/* ------------------------------------------- */
+/*  ONLY STYLE THE HOME + PREDICT BUTTONS      */
+/* ------------------------------------------- */
+
+/* Start Now button (home page) */
+.start-now button {
+    background-color: #b2f7b1 !important;
     color: black !important;
-    border-radius: 10px !important;
-    border: none !important;
-    padding: 10px 25px !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
+    border-radius: 10px;
+    border: none;
+    padding: 12px 28px;
+    font-size: 18px;
+    font-weight: 600;
 }
 
-/* BUTTON HOVER */
-button:hover, .stButton>button:hover {
-    background-color: var(--btn-green-hover) !important;
+/* Predict button */
+.predict-btn button {
+    background-color: #b2f7b1 !important;
+    color: black !important;
+    border-radius: 10px;
+    border: none;
+    padding: 12px 28px;
+    font-size: 18px;
+    font-weight: 600;
 }
 
+/* Hover effect on both buttons */
+.start-now button:hover,
+.predict-btn button:hover {
+    background-color: #9be69a !important;
+}
+
+/* ------------------------------------------- */
+/* REMOVE GREEN COLOR FROM ALL OTHER BUTTONS   */
+/* ------------------------------------------- */
+.stButton button {
+    background-color: #1c1c1c !important; /* neutral dark, not green */
+    color: white !important;
+}
 </style>
-"""
-
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 # ---------------------------------------------------------
 # MODEL PATHS
