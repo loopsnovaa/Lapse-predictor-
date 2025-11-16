@@ -32,29 +32,30 @@ header[data-testid="stHeader"] {
     padding: 0 !important;
     margin: 0 !important;
 }
- /* MAKE SIDEBAR LIGHT BLUE + FORCE WIDTH */
+/* FORCE SIDEBAR TO BE VISIBLE + LIGHT BLUE */
 section[data-testid="stSidebar"] {
-    background-color: #3c6e91 !important;   /* MUCH lighter blue */
-    border-right: 1px solid rgba(255,255,255,0.2);
+    background-color: #3C6E91 !important;  /* lighter blue */
+    width: 280px !important;
+    min-width: 280px !important;
+    padding: 20px !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    width: 300px !important;
+    position: relative !important;
+    z-index: 999 !important;
+    border-right: 1px solid rgba(255,255,255,0.3);
 }
 
 /* MAKE SIDEBAR TEXT WHITE */
-section[data-testid="stSidebar"] * {
+section[data-testid="stSidebar"] *, 
+[data-testid="stSidebar"] .stRadio label {
     color: white !important;
 }
 
-
-/* ENSURE SIDEBAR IS ALWAYS VISIBLE */
-section[data-testid="stSidebar"] {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+/* FIX RADIO BUTTONS IN SIDEBAR */
+.stRadio > div {
+    color: white !important;
 }
-
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
