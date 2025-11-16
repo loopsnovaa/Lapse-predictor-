@@ -24,60 +24,41 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* Main background */
+/* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #06223d !important; /* dark navy */
+    background-color: #072540 !important; /* dark navy */
 }
 
-/* Sidebar background - lighter navy */
+/* SIDEBAR */
 [data-testid="stSidebar"] {
-    background-color: #0b3257 !important;
+    background-color: #0d3a66 !important; /* lighter navy */
+    color: white !important;
 }
 
-/* REMOVE RANDOM HOVER TEXT in header */
-[data-testid="stHeader"] div:first-child {
-    display: none !important;
+/* REMOVE THAT FLOATING TOOLTIP OVER NAVIGATION */
+[data-testid="stMarkdownContainer"] p {
+    color: white !important;
 }
 
-/* ------------------------------- */
-/*  ONLY STYLE HOME + PREDICT BTN  */
-/* ------------------------------- */
-
-/* Start Now button */
-.start-now button {
+/* ONLY THESE BUTTONS ARE GREEN: start + predict */
+.stButton>button {
     background-color: #A0E15E !important;
     color: black !important;
-    border-radius: 10px;
-    border: none;
-    padding: 12px 28px;
-    font-size: 18px;
-    font-weight: 600;
+    border-radius: 10px !important;
+    border: none !important;
+    padding: 10px 25px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
 }
 
-/* Predict button */
-.predict-btn button {
-    background-color: #A0E15E !important;
-    color: black !important;
-    border-radius: 10px;
-    border: none;
-    padding: 12px 28px;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-/* Hover */
-.start-now button:hover,
-.predict-btn button:hover {
-    background-color: #9be69a !important;
-}
-
-/* Remove green from ALL OTHER buttons */
-.stButton button {
-    background-color: #1c1c1c !important;
+/* OTHER BUTTONS (increment/decrement/select) → NORMAL */
+button[kind="secondary"] {
+    background-color: #1a1a1a !important;
     color: white !important;
 }
 </style>
 """
+
 
 # ---------------------------------------------------------
 # MODEL PATHS
