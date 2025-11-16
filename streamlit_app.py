@@ -32,18 +32,14 @@ header[data-testid="stHeader"] {
     padding: 0 !important;
     margin: 0 !important;
 }
-/* FORCE SIDEBAR TO BE VISIBLE + LIGHT BLUE */
+/* RESTORE SIDEBAR — make sure it's visible */
 section[data-testid="stSidebar"] {
-    background-color: #3C6E91 !important;  /* lighter blue */
-    width: 280px !important;
-    min-width: 280px !important;
-    padding: 20px !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    position: relative !important;
-    z-index: 999 !important;
-    border-right: 1px solid rgba(255,255,255,0.3);
+    background-color: #124d7e !important; /* lighter navy */
+    color: white !important;
+    border-right: 2px solid #0a2f4d !important;
 }
 
 /* MAKE SIDEBAR TEXT WHITE */
