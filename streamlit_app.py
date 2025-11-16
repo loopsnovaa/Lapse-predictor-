@@ -25,35 +25,42 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-/* main background (navy) */
+/* MAIN BACKGROUND – dark navy */
 [data-testid="stAppViewContainer"] {
-    background-color: #1B2A41 !important;
+    background-color: #0A1C33 !important;   /* dark navy */
     color: white !important;
 }
 
-/* sidebar */
+/* SIDEBAR – one shade lighter navy */
 [data-testid="stSidebar"] {
-    background-color: #24344F !important;
+    background-color: #122A47 !important;   /* lighter navy */
     color: white !important;
 }
 
-/* sidebar text */
+/* Fix ALL sidebar text */
 [data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* buttons */
-.stButton>button {
-    background-color: #b2f7b1 !important;
+/* ALL BUTTONS — SAME GREEN */
+.stButton>button,
+button[kind="primary"],
+button[kind="secondary"],
+button[data-baseweb="button"] {
+    background-color: #b2f7b1 !important;  /* green */
     color: black !important;
-    border-radius: 10px;
-    border: none;
-    padding: 10px 25px;
-    font-size: 18px;
-    font-weight: 600;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 10px 25px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
 }
 
-.stButton>button:hover {
+/* Hover for ALL buttons */
+.stButton>button:hover,
+button[kind="primary"]:hover,
+button[kind="secondary"]:hover,
+button[data-baseweb="button"]:hover {
     background-color: #9be99a !important;
 }
 </style>
