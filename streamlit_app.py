@@ -45,7 +45,7 @@ html, body, [class*="css"] {
 
 /* Start Now button */
 .start-now button {
-    background-color: #b2f7b1 !important;
+    background-color: #A0E15E !important;
     color: black !important;
     border-radius: 10px;
     border: none;
@@ -56,7 +56,7 @@ html, body, [class*="css"] {
 
 /* Predict button */
 .predict-btn button {
-    background-color: #b2f7b1 !important;
+    background-color: #A0E15E !important;
     color: black !important;
     border-radius: 10px;
     border: none;
