@@ -28,6 +28,12 @@ html, body, [class*="css"] {
 header[data-testid="stHeader"] {
     display: none !important;
 }
+/* RESTORE SIDEBAR (make sure it stays visible) */
+section[data-testid="stSidebar"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
