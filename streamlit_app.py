@@ -24,11 +24,29 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* SAFELY HIDE ONLY THE TOP HEADER */
-div[data-testid="stToolbar"], 
-header[data-testid="stHeader"] > div:first-child {
+/* REMOVE STREAMLIT TOP HEADER COMPLETELY */
+header[data-testid="stHeader"] {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
+ /* MAKE SIDEBAR LIGHT BLUE + FORCE WIDTH */
+section[data-testid="stSidebar"] {
+    background-color: #3c6e91 !important;   /* MUCH lighter blue */
+    border-right: 1px solid rgba(255,255,255,0.2);
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 300px !important;
+}
+
+/* MAKE SIDEBAR TEXT WHITE */
+section[data-testid="stSidebar"] * {
+    color: white !important;
+}
+
 
 /* ENSURE SIDEBAR IS ALWAYS VISIBLE */
 section[data-testid="stSidebar"] {
