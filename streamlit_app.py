@@ -16,22 +16,29 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
-CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
+    color: white !important;
 }
 
-/* main background */
+/* main background (navy) */
 [data-testid="stAppViewContainer"] {
-    background-color: #c6def1 !important;
+    background-color: #1B2A41 !important;
+    color: white !important;
 }
 
-/* sidebar */
+/* sidebar (slightly lighter navy) */
 [data-testid="stSidebar"] {
-    background-color: #eef5ff !important;
+    background-color: #24344F !important;
+    color: white !important;
+}
+
+/* fix sidebar text */
+[data-testid="stSidebar"] * {
+    color: white !important;
 }
 
 /* buttons */
@@ -48,8 +55,7 @@ html, body, [class*="css"] {
     background-color: #9be99a !important;
 }
 </style>
-"""
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # MODEL PATHS
