@@ -19,20 +19,17 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 CUSTOM_CSS = """
 <style>
 
-/* font */
+/* ===== FONT ===== */
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* REMOVE STREAMLIT TOP HEADER COMPLETELY */
+/* ===== REMOVE TOP STREAMLIT HEADER ===== */
 header[data-testid="stHeader"] {
     display: none !important;
-    visibility: hidden !important;
-    height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
 }
-/* RESTORE SIDEBAR — make sure it's visible */
+
+/* ===== RESTORE SIDEBAR (you accidentally hid it earlier) ===== */
 section[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
@@ -42,37 +39,19 @@ section[data-testid="stSidebar"] {
     border-right: 2px solid #0a2f4d !important;
 }
 
-/* MAKE SIDEBAR TEXT WHITE */
-[data-testid="stSidebar"] {
-    background-color: #124d7e !important;  /* much lighter blue */
-    color: white !important;
-    border-right: 2px solid #0a2f4d !important; /* separates it from page */
-}
-
-
-/* FIX RADIO BUTTONS IN SIDEBAR */
-.stRadio > div {
+/* Fix sidebar text */
+section[data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* MAIN BACKGROUND */
+/* ===== MAIN BACKGROUND ===== */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important;
+    background-color: #072540 !important; /* dark navy */
 }
 
-/* SIDEBAR */
-[data-testid="stSidebar"] {
-    background-color: #0d3a66 !important;
-    color: white !important;
-}
-
-/*  FORCE GREEN BUTTON for Start Now + Predict */
-.stButton > button,
-button.css-1q8dd3e,
-button.css-nqowgj,
-button[data-testid="baseButton-secondary"],
-button[data-testid="baseButton-primary"] {
-    background-color: #7bd88f !important;
+/* ===== GREEN BUTTONS (Start Now + Predict) ONLY ===== */
+.stButton > button {
+    background-color: #7bd88f !important;   /* LIGHT GREEN */
     color: black !important;
     border-radius: 12px !important;
     border: none !important;
@@ -83,6 +62,7 @@ button[data-testid="baseButton-primary"] {
 
 </style>
 """
+
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
