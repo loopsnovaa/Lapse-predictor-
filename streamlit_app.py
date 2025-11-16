@@ -24,47 +24,49 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* MAIN BACKGROUND */
+/* REMOVE BLACK TOP TOOLBAR */
+header[data-testid="stHeader"] {
+    display: none !important;
+}
+
+/* MAIN PAGE BACKGROUND (dark navy) */
 [data-testid="stAppViewContainer"] {
     background-color: #072540 !important;
 }
 
-/* SIDEBAR */
+/* SIDEBAR (lighter navy) */
 [data-testid="stSidebar"] {
     background-color: #0d3a66 !important;
     color: white !important;
 }
 
-/* REMOVE FLOATING TOOLTIP */
-[data-testid="stMarkdownContainer"] p {
+/* SIDEBAR TEXT FIX */
+[data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* REMOVE BLACK HEADER */
-[data-testid="stHeader"] {
-    display: none !important;
-}
-
-
-/*  ONLY GREEN BUTTONS: Start Now + Predict */
-button:has(span:contains("Start Now")),
-button:has(span:contains("Predict")) {
-    background-color: #A0E15E !important;
+/* -------- GREEN BUTTONS (ONLY Start Now & Predict) -------- */
+.stButton > button {
+    background-color: #7bd88f !important;  /* 👈 performance-page green */
     color: black !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     border: none !important;
-    padding: 10px 26px !important;
+    padding: 10px 25px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* All other buttons normal (dark grey) */
-button {
-    background-color: #1f1f1f !important;
+/* ALL NUMBER INPUT +/- BUTTONS BACK TO NORMAL */
+button[kind="secondary"], button[aria-label="Increment"], button[aria-label="Decrement"] {
+    background-color: #333 !important;
     color: white !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
 }
 
+/* FIX SELECTBOX TEXT */
+div[data-baseweb="select"] * {
+    color: white !important;
+}
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
