@@ -16,6 +16,7 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
+# GLOBAL CSS STYLING
 CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -26,21 +27,21 @@ html, body, [class*="css"] {
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important; /* dark navy */
+    background-color: #072540 !important;
 }
 
 /* SIDEBAR */
 [data-testid="stSidebar"] {
-    background-color: #0d3a66 !important; /* lighter navy */
+    background-color: #0d3a66 !important;
     color: white !important;
 }
 
-/* REMOVE THAT FLOATING TOOLTIP OVER NAVIGATION */
+/* REMOVE FLOATING TEXT */
 [data-testid="stMarkdownContainer"] p {
     color: white !important;
 }
 
-/* ONLY THESE BUTTONS ARE GREEN: start + predict */
+/* GREEN BUTTONS */
 .stButton>button {
     background-color: #A0E15E !important;
     color: black !important;
@@ -51,7 +52,7 @@ html, body, [class*="css"] {
     font-weight: 600 !important;
 }
 
-/* OTHER BUTTONS (increment/decrement/select) → NORMAL */
+/* NORMAL OTHER BUTTONS */
 button[kind="secondary"] {
     background-color: #1a1a1a !important;
     color: white !important;
@@ -59,6 +60,7 @@ button[kind="secondary"] {
 </style>
 """
 
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # MODEL PATHS
