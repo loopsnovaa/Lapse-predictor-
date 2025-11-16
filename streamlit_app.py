@@ -24,32 +24,34 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* REMOVE TOP HEADER */
+/* REMOVE STREAMLIT TOP HEADER */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* FORCE SIDEBAR TO SHOW */
+/* FORCE SIDEBAR TO BE VISIBLE */
 section[data-testid="stSidebar"] {
+    background-color: #124d7e !important;
+    color: white !important;
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    background-color: #124d7e !important;  /* lighter navy */
-    color: white !important;
+    width: 280px !important;
+    min-width: 280px !important;
     border-right: 2px solid #0a2f4d !important;
 }
 
-/* SIDEBAR TEXT FIX */
+/* SIDEBAR TEXT */
 section[data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* MAIN BACKGROUND */
+/* DARK NAVY MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important;  /* dark navy */
+    background-color: #072540 !important;
 }
 
-/* GREEN BUTTONS (Start + Predict) */
+/* GREEN BUTTONS (Start + Predict ONLY) */
 .stButton > button {
     background-color: #7bd88f !important;
     color: black !important;
@@ -60,10 +62,10 @@ section[data-testid="stSidebar"] * {
     font-weight: 600 !important;
 }
 
-/* FIX NUMBER INPUT BUTTONS SO THEY ARE NOT GREEN */
+/* FIX NUMBER INPUT BUTTONS (so they stay normal) */
 button[kind="secondary"],
-button[aria-label="Decrease"],
-button[aria-label="Increase"] {
+button[aria-label="Increase"],
+button[aria-label="Decrease"] {
     background-color: #1e1e1e !important;
     color: white !important;
 }
