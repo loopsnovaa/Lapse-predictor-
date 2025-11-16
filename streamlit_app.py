@@ -19,45 +19,53 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 CUSTOM_CSS = """
 <style>
 
-/* ===== FONT ===== */
+/* FONT */
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* ===== REMOVE TOP STREAMLIT HEADER ===== */
+/* REMOVE TOP HEADER */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* ===== RESTORE SIDEBAR (you accidentally hid it earlier) ===== */
+/* FORCE SIDEBAR TO SHOW */
 section[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    background-color: #124d7e !important; /* lighter navy */
+    background-color: #124d7e !important;  /* lighter navy */
     color: white !important;
     border-right: 2px solid #0a2f4d !important;
 }
 
-/* Fix sidebar text */
+/* SIDEBAR TEXT FIX */
 section[data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* ===== MAIN BACKGROUND ===== */
+/* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important; /* dark navy */
+    background-color: #072540 !important;  /* dark navy */
 }
 
-/* ===== GREEN BUTTONS (Start Now + Predict) ONLY ===== */
+/* GREEN BUTTONS (Start + Predict) */
 .stButton > button {
-    background-color: #7bd88f !important;   /* LIGHT GREEN */
+    background-color: #7bd88f !important;
     color: black !important;
     border-radius: 12px !important;
     border: none !important;
     padding: 10px 26px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
+}
+
+/* FIX NUMBER INPUT BUTTONS SO THEY ARE NOT GREEN */
+button[kind="secondary"],
+button[aria-label="Decrease"],
+button[aria-label="Increase"] {
+    background-color: #1e1e1e !important;
+    color: white !important;
 }
 
 </style>
