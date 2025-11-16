@@ -26,27 +26,23 @@ html, body, [class*="css"] {
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important;
+    background-color: #072540 !important; /* dark navy */
 }
 
 /* SIDEBAR */
 [data-testid="stSidebar"] {
-    background-color: #0d3a66 !important;
+    background-color: #0d3a66 !important; /* lighter navy */
     color: white !important;
 }
 
-/* REMOVE FLOATING TOOLTIP TEXT */
+/* REMOVE FLOATING TOOLTIP TEXT IN HEADER (IF ANY) */
 [data-testid="stHeader"] div:first-child {
     display: none !important;
 }
 
-/* -------------------------------------------------- */
-/* FORCE HOME + PREDICT BUTTONS TO BE GREEN (#A0E15E) */
-/* -------------------------------------------------- */
-
-/* Start Now button */
-button#start_btn {
-    background-color: #A0E15E !important;
+/* ALL st.button BUTTONS (Start + Predict) = GREEN */
+.stButton > button {
+    background-color: #A0E15E !important;  /* performance-page green */
     color: black !important;
     border-radius: 10px !important;
     border: none !important;
@@ -55,32 +51,14 @@ button#start_btn {
     font-weight: 600 !important;
 }
 
-/* Predict button */
-button#predict_btn {
-    background-color: #A0E15E !important;
-    color: black !important;
-    border-radius: 10px !important;
-    border: none !important;
-    padding: 12px 28px !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
-}
-
-/* Hover effect */
-button#start_btn:hover,
-button#predict_btn:hover {
+/* HOVER STATE */
+.stButton > button:hover {
     background-color: #9be69a !important;
-}
-
-/* REMOVE GREEN FROM ALL OTHER BUTTONS */
-.stButton>button {
-    background-color: #1a1a1a !important;
-    color: white !important;
 }
 </style>
 """
-
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # MODEL PATHS
