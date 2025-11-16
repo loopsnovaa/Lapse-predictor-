@@ -16,6 +16,7 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
+CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -30,13 +31,13 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-/* sidebar (slightly lighter navy) */
+/* sidebar */
 [data-testid="stSidebar"] {
     background-color: #24344F !important;
     color: white !important;
 }
 
-/* fix sidebar text */
+/* sidebar text */
 [data-testid="stSidebar"] * {
     color: white !important;
 }
@@ -51,11 +52,12 @@ html, body, [class*="css"] {
     font-size: 18px;
     font-weight: 600;
 }
+
 .stButton>button:hover {
     background-color: #9be99a !important;
 }
 </style>
-
+"""
 
 # ---------------------------------------------------------
 # MODEL PATHS
