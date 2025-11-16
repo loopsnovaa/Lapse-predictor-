@@ -47,10 +47,12 @@ section[data-testid="stSidebar"] {
 }
 
 /* MAKE SIDEBAR TEXT WHITE */
-section[data-testid="stSidebar"] *, 
-[data-testid="stSidebar"] .stRadio label {
+[data-testid="stSidebar"] {
+    background-color: #124d7e !important;  /* much lighter blue */
     color: white !important;
+    border-right: 2px solid #0a2f4d !important; /* separates it from page */
 }
+
 
 /* FIX RADIO BUTTONS IN SIDEBAR */
 .stRadio > div {
