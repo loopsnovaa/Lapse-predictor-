@@ -246,9 +246,12 @@ def home_page():
 def predict_page():
 
     st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Predict", "Performance"],
-                     key="nav_pred",
-                     on_change=lambda: go_to(st.session_state.nav_pred.lower()))
+    st.sidebar.radio(
+        "Go to:", 
+        ["Predict", "Performance"],
+        key="nav_pred",
+        on_change=lambda: go_to(st.session_state.nav_pred.lower())
+    )
 
     st.title("Predict Policy Lapse Risk")
 
