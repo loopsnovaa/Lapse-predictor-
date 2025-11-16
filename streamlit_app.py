@@ -11,7 +11,11 @@ import streamlit as st
 # ---------------------------------------------------------
 # PAGE CONFIG
 # ---------------------------------------------------------
-st.set_page_config(page_title="ChurnAlyse", layout="wide")
+st.set_page_config(
+    page_title="ChurnAlyse",
+    layout="wide",
+    initial_sidebar_state="expanded"   # ✅ force sidebar open
+)
 
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
@@ -19,13 +23,15 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 CUSTOM_CSS = """
 <style>
 
-/* REMOVE TOP HEADER */
+/* KEEP HEADER BUT MATCH BACKGROUND (no ugly black bar) */
 header[data-testid="stHeader"] {
-    display: none !important;
+    background-color: #072540 !important;
 }
 
 /* FORCE SIDEBAR BACK + BLUE BACKGROUND */
-aside[data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="stSidebar"] {
+aside[data-testid="stSidebar"],
+section[data-testid="stSidebar"],
+div[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -69,9 +75,7 @@ button[aria-label="Decrease"] {
 </style>
 """
 
-
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 # ---------------------------------------------------------
 # MODEL PATHS
@@ -249,7 +253,7 @@ def predict_page():
 
     st.sidebar.title("Navigation")
     st.sidebar.radio(
-        "Go to:", 
+        "Go to:",
         ["Predict", "Performance"],
         key="nav_pred",
         on_change=lambda: go_to(st.session_state.nav_pred.lower())
@@ -311,9 +315,12 @@ def predict_page():
 def performance_page():
 
     st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Predict", "Performance"],
-                     key="nav_perf",
-                     on_change=lambda: go_to(st.session_state.nav_perf.lower()))
+    st.sidebar.radio(
+        "Go to:",
+        ["Predict", "Performance"],
+        key="nav_perf",
+        on_change=lambda: go_to(st.session_state.nav_perf.lower())
+    )
 
     st.title("Model Performance Dashboard")
 
