@@ -17,54 +17,56 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
 CUSTOM_CSS = """
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-
 <style>
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif !important;
-    color: white !important;
+
+:root {
+    --main-bg: #0A1C33;   /* dark navy */
+    --sidebar-bg: #122A47; /* lighter navy */
+    --btn-green: #b2f7b1;
+    --btn-green-hover: #9be99a;
 }
 
-/* MAIN BACKGROUND – dark navy */
+/* MAIN APP BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #0A1C33 !important;   /* dark navy */
-    color: white !important;
+    background-color: var(--main-bg) !important;
 }
 
-/* SIDEBAR – one shade lighter navy */
+/* SIDEBAR BACKGROUND */
 [data-testid="stSidebar"] {
-    background-color: #122A47 !important;   /* lighter navy */
-    color: white !important;
+    background-color: var(--sidebar-bg) !important;
 }
 
-/* Fix ALL sidebar text */
-[data-testid="stSidebar"] * {
+/* ALL TEXT COLOR FIX */
+[data-testid="stAppViewContainer"], 
+[data-testid="stSidebar"], 
+[data-testid="stHeader"], 
+[data-testid="stToolbar"], 
+* {
     color: white !important;
+    font-family: 'DM Sans', sans-serif !important;
 }
 
-/* ALL BUTTONS — SAME GREEN */
-.stButton>button,
-button[kind="primary"],
-button[kind="secondary"],
-button[data-baseweb="button"] {
-    background-color: #b2f7b1 !important;  /* green */
+/* ALL BUTTONS */
+button, .stButton>button {
+    background-color: var(--btn-green) !important;
     color: black !important;
-    border: none !important;
     border-radius: 10px !important;
+    border: none !important;
     padding: 10px 25px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* Hover for ALL buttons */
-.stButton>button:hover,
-button[kind="primary"]:hover,
-button[kind="secondary"]:hover,
-button[data-baseweb="button"]:hover {
-    background-color: #9be99a !important;
+/* BUTTON HOVER */
+button:hover, .stButton>button:hover {
+    background-color: var(--btn-green-hover) !important;
 }
+
 </style>
 """
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # MODEL PATHS
