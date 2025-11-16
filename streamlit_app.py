@@ -26,46 +26,48 @@ html, body, [class*="css"] {
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important; /* dark navy */
+    background-color: #072540 !important;
 }
 
 /* SIDEBAR */
 [data-testid="stSidebar"] {
-    background-color: #0d3a66 !important; /* lighter navy */
+    background-color: #0d3a66 !important;
     color: white !important;
 }
 
-/* REMOVE FLOATING TOOLTIP TEXT */
+/* REMOVE FLOATING TOOLTIP */
 [data-testid="stMarkdownContainer"] p {
     color: white !important;
 }
 
-/* REMOVE STREAMLIT HEADER (BLACK BAR) */
+/* REMOVE BLACK HEADER */
 [data-testid="stHeader"] {
     display: none !important;
 }
 
-/* BUTTONS — ONLY Start + Predict SHOULD BE GREEN */
-.stButton>button {
+
+/*  ONLY GREEN BUTTONS: Start Now + Predict */
+button:has(span:contains("Start Now")),
+button:has(span:contains("Predict")) {
     background-color: #A0E15E !important;
     color: black !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
     border: none !important;
-    padding: 10px 25px !important;
+    padding: 10px 26px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* OTHER BUTTONS (increment/decrement/select) */
-button[kind="secondary"] {
-    background-color: #1a1a1a !important;
+/* All other buttons normal (dark grey) */
+button {
+    background-color: #1f1f1f !important;
     color: white !important;
+    border-radius: 8px !important;
 }
+
 </style>
 """
-
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 # ---------------------------------------------------------
 # MODEL PATHS
