@@ -16,6 +16,7 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
+CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
 <style>
@@ -33,16 +34,16 @@ html, body, [class*="css"] {
     background-color: #0b3257 !important;
 }
 
-/* REMOVE RANDOM HOVER TEXT */
+/* REMOVE RANDOM HOVER TEXT in header */
 [data-testid="stHeader"] div:first-child {
     display: none !important;
 }
 
-/* ------------------------------------------- */
-/*  ONLY STYLE THE HOME + PREDICT BUTTONS      */
-/* ------------------------------------------- */
+/* ------------------------------- */
+/*  ONLY STYLE HOME + PREDICT BTN  */
+/* ------------------------------- */
 
-/* Start Now button (home page) */
+/* Start Now button */
 .start-now button {
     background-color: #b2f7b1 !important;
     color: black !important;
@@ -64,20 +65,19 @@ html, body, [class*="css"] {
     font-weight: 600;
 }
 
-/* Hover effect on both buttons */
+/* Hover */
 .start-now button:hover,
 .predict-btn button:hover {
     background-color: #9be69a !important;
 }
 
-/* ------------------------------------------- */
-/* REMOVE GREEN COLOR FROM ALL OTHER BUTTONS   */
-/* ------------------------------------------- */
+/* Remove green from ALL OTHER buttons */
 .stButton button {
-    background-color: #1c1c1c !important; /* neutral dark, not green */
+    background-color: #1c1c1c !important;
     color: white !important;
 }
 </style>
+"""
 
 # ---------------------------------------------------------
 # MODEL PATHS
