@@ -16,7 +16,6 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # ---------------------------------------------------------
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
-# GLOBAL CSS STYLING
 CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -36,24 +35,45 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-/* REMOVE FLOATING TEXT */
-[data-testid="stMarkdownContainer"] p {
-    color: white !important;
+/* REMOVE FLOATING TOOLTIP TEXT */
+[data-testid="stHeader"] div:first-child {
+    display: none !important;
 }
 
-/* GREEN BUTTONS */
-.stButton>button {
+/* -------------------------------------------------- */
+/* FORCE HOME + PREDICT BUTTONS TO BE GREEN (#A0E15E) */
+/* -------------------------------------------------- */
+
+/* Start Now button */
+button#start_btn {
     background-color: #A0E15E !important;
     color: black !important;
     border-radius: 10px !important;
     border: none !important;
-    padding: 10px 25px !important;
+    padding: 12px 28px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* NORMAL OTHER BUTTONS */
-button[kind="secondary"] {
+/* Predict button */
+button#predict_btn {
+    background-color: #A0E15E !important;
+    color: black !important;
+    border-radius: 10px !important;
+    border: none !important;
+    padding: 12px 28px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+}
+
+/* Hover effect */
+button#start_btn:hover,
+button#predict_btn:hover {
+    background-color: #9be69a !important;
+}
+
+/* REMOVE GREEN FROM ALL OTHER BUTTONS */
+.stButton>button {
     background-color: #1a1a1a !important;
     color: white !important;
 }
@@ -228,7 +248,7 @@ def home_page():
     st.write("Predict churn, monitor risk, and save customers proactively.")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    if st.button("Start Now"):
+    if st.button("Start Now", key="start_btn"):
         go_to("predict")
 
 # ---------------------------------------------------------
@@ -240,7 +260,6 @@ def predict_page():
     st.sidebar.radio("Go to:", ["Predict", "Performance"],
                      key="nav_pred",
                      on_change=lambda: go_to(st.session_state.nav_pred.lower()))
-
 
     st.title("Predict Policy Lapse Risk")
 
@@ -259,7 +278,7 @@ def predict_page():
     adv = st.number_input("Advance Premium Count",0,10,1)
     ben = st.number_input("Initial Benefit",0,2000000,10000)
 
-    if st.button("Predict"):
+    if st.button("Predict", key="predict_btn"):
 
         data = {
             "age": age,
@@ -310,7 +329,6 @@ def performance_page():
     st.write(f"**Total Predictions:** {stats['total_predictions']}")
     st.write(f"**Average Predicted Risk:** {stats['average_predicted_risk']:.3f}")
 
-    # Pie Chart
     labels=["Low","Medium","High"]
     values=[
         stats["low_risk_count"],
@@ -328,12 +346,10 @@ def performance_page():
     )
     st.plotly_chart(pie_fig, use_container_width=True)
 
-    # Bar Chart
     st.subheader("Model Evaluation Metrics (Training)")
 
     metric_names=[]
     metric_values=[]
-
     for k in ["accuracy","precision","recall","f1_score","auc"]:
         v=TRAIN_METRICS.get(k)
         if v is not None:
@@ -344,7 +360,6 @@ def performance_page():
         bar_fig=go.Figure(
             data=[go.Bar(x=metric_names,y=metric_values)]
         )
-
         bar_fig.update_layout(
             yaxis=dict(range=[0,1]),
             title="Model Metric Comparison",
