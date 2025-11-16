@@ -35,28 +35,35 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-/* REMOVE FLOATING TOOLTIP TEXT IN HEADER (IF ANY) */
-[data-testid="stHeader"] div:first-child {
+/* REMOVE FLOATING TOOLTIP TEXT */
+[data-testid="stMarkdownContainer"] p {
+    color: white !important;
+}
+
+/* REMOVE STREAMLIT HEADER (BLACK BAR) */
+[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* ALL st.button BUTTONS (Start + Predict) = GREEN */
-.stButton > button {
-    background-color: #A0E15E !important;  /* performance-page green */
+/* BUTTONS — ONLY Start + Predict SHOULD BE GREEN */
+.stButton>button {
+    background-color: #A0E15E !important;
     color: black !important;
     border-radius: 10px !important;
     border: none !important;
-    padding: 12px 28px !important;
+    padding: 10px 25px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* HOVER STATE */
-.stButton > button:hover {
-    background-color: #9be69a !important;
+/* OTHER BUTTONS (increment/decrement/select) */
+button[kind="secondary"] {
+    background-color: #1a1a1a !important;
+    color: white !important;
 }
 </style>
 """
+
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 
