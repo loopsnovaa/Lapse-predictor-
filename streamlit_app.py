@@ -19,54 +19,49 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 CUSTOM_CSS = """
 <style>
 
-/* FONT */
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif !important;
-}
-
 /* REMOVE STREAMLIT TOP HEADER */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* FORCE SIDEBAR TO BE VISIBLE */
-section[data-testid="stSidebar"] {
-    background-color: #124d7e !important;
-    color: white !important;
+/* FORCE SIDEBAR VISIBLE + BLUE */
+section[data-testid="stSidebar"], div[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    width: 280px !important;
-    min-width: 280px !important;
-    border-right: 2px solid #0a2f4d !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    background-color: #0d3a66 !important;  /* lighter navy */
+    color: white !important;
+    z-index: 999 !important;
+    padding-top: 20px !important;
 }
 
-/* SIDEBAR TEXT */
+/* SIDEBAR TEXT COLOR */
 section[data-testid="stSidebar"] * {
     color: white !important;
 }
 
-/* DARK NAVY MAIN BACKGROUND */
+/* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important;
+    background-color: #072540 !important;  /* dark navy */
 }
 
-/* GREEN BUTTONS (Start + Predict ONLY) */
-.stButton > button {
-    background-color: #7bd88f !important;
+/* --- GREEN BUTTONS (Start Now + Predict) ONLY --- */
+div.stButton > button {
+    background-color: #7bd88f !important;   /* your green */
     color: black !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     border: none !important;
-    padding: 10px 26px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
+    padding: 10px 26px !important;
 }
 
-/* FIX NUMBER INPUT BUTTONS (so they stay normal) */
-button[kind="secondary"],
+/* FIX NUMBER INPUT ARROWS BACK TO NORMAL */
 button[aria-label="Increase"],
 button[aria-label="Decrease"] {
-    background-color: #1e1e1e !important;
+    background-color: transparent !important;
     color: white !important;
 }
 
