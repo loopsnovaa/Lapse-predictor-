@@ -17,59 +17,48 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 # GLOBAL CSS STYLING
 # ---------------------------------------------------------
 CUSTOM_CSS = """
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-
 <style>
+
+/* font */
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* REMOVE BLACK TOP TOOLBAR */
+/* REMOVE TOP HEADER */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* MAIN PAGE BACKGROUND (dark navy) */
+/* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
     background-color: #072540 !important;
 }
 
-/* SIDEBAR (lighter navy) */
+/* SIDEBAR */
 [data-testid="stSidebar"] {
     background-color: #0d3a66 !important;
     color: white !important;
 }
 
-/* SIDEBAR TEXT FIX */
-[data-testid="stSidebar"] * {
-    color: white !important;
-}
-
-/* -------- GREEN BUTTONS (ONLY Start Now & Predict) -------- */
-.stButton > button {
-    background-color: #7bd88f !important;  /* 👈 performance-page green */
+/*  FORCE GREEN BUTTON for Start Now + Predict */
+.stButton > button,
+button.css-1q8dd3e,
+button.css-nqowgj,
+button[data-testid="baseButton-secondary"],
+button[data-testid="baseButton-primary"] {
+    background-color: #7bd88f !important;
     color: black !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
     border: none !important;
-    padding: 10px 25px !important;
+    padding: 10px 26px !important;
     font-size: 18px !important;
     font-weight: 600 !important;
 }
 
-/* ALL NUMBER INPUT +/- BUTTONS BACK TO NORMAL */
-button[kind="secondary"], button[aria-label="Increment"], button[aria-label="Decrement"] {
-    background-color: #333 !important;
-    color: white !important;
-    border-radius: 6px !important;
-}
-
-/* FIX SELECTBOX TEXT */
-div[data-baseweb="select"] * {
-    color: white !important;
-}
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
 # ---------------------------------------------------------
 # MODEL PATHS
