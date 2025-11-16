@@ -24,16 +24,19 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif !important;
 }
 
-/* REMOVE TOP HEADER */
-header[data-testid="stHeader"] {
+/* SAFELY HIDE ONLY THE TOP HEADER */
+div[data-testid="stToolbar"], 
+header[data-testid="stHeader"] > div:first-child {
     display: none !important;
 }
-/* RESTORE SIDEBAR (make sure it stays visible) */
+
+/* ENSURE SIDEBAR IS ALWAYS VISIBLE */
 section[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
 }
+
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
