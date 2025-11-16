@@ -19,37 +19,38 @@ st.set_page_config(page_title="ChurnAlyse", layout="wide")
 CUSTOM_CSS = """
 <style>
 
-/* REMOVE STREAMLIT TOP HEADER */
+/* REMOVE TOP HEADER */
 header[data-testid="stHeader"] {
     display: none !important;
 }
 
-/* FORCE SIDEBAR VISIBLE + BLUE */
-section[data-testid="stSidebar"], div[data-testid="stSidebar"] {
+/* FORCE SIDEBAR BACK + BLUE BACKGROUND */
+aside[data-testid="stSidebar"], section[data-testid="stSidebar"], div[data-testid="stSidebar"] {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
     width: 260px !important;
     min-width: 260px !important;
-    background-color: #0d3a66 !important;  /* lighter navy */
+    background-color: #0d3a66 !important;
     color: white !important;
     z-index: 999 !important;
     padding-top: 20px !important;
+    position: relative !important;
 }
 
-/* SIDEBAR TEXT COLOR */
-section[data-testid="stSidebar"] * {
+/* SIDEBAR TEXT */
+aside[data-testid="stSidebar"] * {
     color: white !important;
 }
 
 /* MAIN BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background-color: #072540 !important;  /* dark navy */
+    background-color: #072540 !important;
 }
 
-/* --- GREEN BUTTONS (Start Now + Predict) ONLY --- */
+/* GREEN BUTTONS */
 div.stButton > button {
-    background-color: #7bd88f !important;   /* your green */
+    background-color: #7bd88f !important;
     color: black !important;
     border-radius: 10px !important;
     border: none !important;
@@ -58,7 +59,7 @@ div.stButton > button {
     padding: 10px 26px !important;
 }
 
-/* FIX NUMBER INPUT ARROWS BACK TO NORMAL */
+/* KEEP INPUT ARROWS NORMAL */
 button[aria-label="Increase"],
 button[aria-label="Decrease"] {
     background-color: transparent !important;
@@ -67,6 +68,7 @@ button[aria-label="Decrease"] {
 
 </style>
 """
+
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
