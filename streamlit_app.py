@@ -155,8 +155,8 @@ def preprocess_input(data_dict):
 
     df = df[FEATURE_ORDER]
 
-    X_scaled = SCALER.transform(df)
-    return X_scaled
+    # ❌ REMOVE SCALER (it is mismatched)
+    return df.values
 
 # ---------------------------------------------------------
 # PREDICT + LOG
