@@ -1,46 +1,3 @@
-#!/usr/bin/env python3
-"""
-Insurance Policy Lapse Model Training (XGBoost-only, Tuned, Using Processed CSV)
-
-Assumes data/Kaggle.csv already has these columns:
-
-    policy_id
-    age
-    gender
-    policy_type_1
-    policy_type_2
-    policy_amount
-    premium_amount
-    policy_tenure_years
-    policy_tenure_decimal
-    channel1
-    channel2
-    channel3
-    substandard_risk
-    number_of_advance_premium
-    initial_benefit
-    policy_lapse
-    premium_to_benefit_ratio
-    age_squared
-    premium_squared
-    benefit_squared
-
-This script:
-
-1) Loads that CSV directly (no extra cleaning)
-2) Splits into train / test
-3) Balances the training data with SMOTE-ENN
-4) Runs RandomizedSearchCV to tune XGBoost hyperparameters
-5) Evaluates with accuracy, precision, recall, F1, AUC
-6) Saves:
-
-   models/training_feature_order.joblib
-   models/scaler.joblib
-   models/xgboost_optimized_model.joblib
-   models/model_metrics.joblib
-
-These are compatible with your existing API + dashboard.
-"""
 
 import os
 import sys
@@ -73,10 +30,6 @@ SCALER_PATH = "models/scaler.joblib"
 MODEL_PATH = "models/xgboost_optimized_model.joblib"
 METRICS_PATH = "models/model_metrics.joblib"
 
-
-# -------------------------------------------------------------
-# 1. Load your ALREADY-PROCESSED insurance dataset
-# -------------------------------------------------------------
 def load_insurance_data(path: str) -> pd.DataFrame:
     print("=" * 60)
     print("LOADING PROCESSED INSURANCE DATASET FROM Kaggle.csv")
@@ -85,7 +38,6 @@ def load_insurance_data(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         sys.exit(f"Dataset not found at {path}")
 
-    # Try normal CSV, then ;, then tab, in case of weird separators
     df = pd.read_csv(path)
     if df.shape[1] == 1:
         df = pd.read_csv(path, sep=";")
@@ -131,9 +83,6 @@ def load_insurance_data(path: str) -> pd.DataFrame:
     return df[expected_cols].copy()
 
 
-# -------------------------------------------------------------
-# 2. Train tuned XGBoost model (balanced)
-# -------------------------------------------------------------
 def train_xgboost_tuned(df: pd.DataFrame):
     print("\n" + "=" * 60)
     print("TRAINING TUNED XGBOOST MODEL (BALANCED)")
@@ -164,35 +113,29 @@ def train_xgboost_tuned(df: pd.DataFrame):
     X = df[feature_cols]
     y = df["policy_lapse"].astype(int)
 
-    # Train / test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # Save feature order for API
     os.makedirs("models", exist_ok=True)
     joblib.dump(feature_cols, FEATURE_ORDER_PATH)
     print(f"✓ Saved feature order to {FEATURE_ORDER_PATH}")
 
-    # Scale features (mainly for stability with squared terms)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     joblib.dump(scaler, SCALER_PATH)
     print(f"✓ Saved scaler to {SCALER_PATH}")
 
-    # Balance training with SMOTE-ENN
     print("Applying SMOTE-ENN for class balancing...")
     smote_enn = SMOTEENN(random_state=42)
     X_train_bal, y_train_bal = smote_enn.fit_resample(X_train_scaled, y_train)
     print(f"✓ Balanced training distribution: {Counter(y_train_bal)}")
 
-    # Class imbalance weight
     neg, pos = Counter(y_train_bal).get(0, 0), Counter(y_train_bal).get(1, 0)
     scale_pos_weight = neg / pos if pos > 0 else 1.0
     print(f"✓ Using scale_pos_weight = {scale_pos_weight:.3f}")
 
-    # Base XGBoost model
     base_xgb = XGBClassifier(
         random_state=42,
         eval_metric="logloss",
@@ -201,7 +144,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
         n_jobs=-1,
     )
 
-    # Hyperparameter search space
     param_distributions = {
         "n_estimators": [300, 400, 500, 600],
         "max_depth": [4, 5, 6, 7, 8],
@@ -216,7 +158,7 @@ def train_xgboost_tuned(df: pd.DataFrame):
     search = RandomizedSearchCV(
         base_xgb,
         param_distributions=param_distributions,
-        n_iter=20,                # increase to 30+ if you want even better tuning
+        n_iter=20,                
         scoring="f1",
         cv=3,
         verbose=1,
@@ -229,7 +171,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print(f"✓ Best params: {search.best_params_}")
     print(f"✓ Best CV F1 score: {search.best_score_:.4f}")
 
-    # Evaluate on test set
     y_proba = best_model.predict_proba(X_test_scaled)[:, 1]
     y_pred = (y_proba >= 0.5).astype(int)
 
@@ -249,7 +190,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print("\nClassification Report:\n")
     print(classification_report(y_test, y_pred))
 
-    # Save model & metrics
     joblib.dump(best_model, MODEL_PATH)
     print(f"✓ Saved tuned XGBoost model to {MODEL_PATH}")
 
@@ -272,9 +212,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
             print(f"{k}: {v:.4f}")
 
 
-# -------------------------------------------------------------
-# 3. MAIN
-# -------------------------------------------------------------
 def main():
     df = load_insurance_data(DATA_PATH)
     train_xgboost_tuned(df)
