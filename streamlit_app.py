@@ -167,13 +167,13 @@ def preprocess_input(data_dict):
 # ---------------------------------------------------------
 # PREDICT + LOG
 # ---------------------------------------------------------
+# PREDICT + LOG (FIXED LABEL DIRECTION)
 def predict_and_log(data_dict):
     X = preprocess_input(data_dict)
 
-    # Prediction from model
-    proba = float(MODEL.predict_proba(X)[0][1])
+    # Correct probability of LAPSE
+    proba = float(MODEL.predict_proba(X)[0][0])
 
-    # Thresholds
     if proba < 0.30:
         risk = "Low"
     elif proba < 0.70:
@@ -181,7 +181,6 @@ def predict_and_log(data_dict):
     else:
         risk = "High"
 
-    # Logging
     record = {
         "timestamp": datetime.now().isoformat(),
         "input": data_dict,
@@ -193,6 +192,7 @@ def predict_and_log(data_dict):
         f.write(json.dumps(record) + "\n")
 
     return proba, risk
+
 
 
 # ---------------------------------------------------------
