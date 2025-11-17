@@ -115,6 +115,36 @@ MODEL, SCALER, FEATURE_ORDER, TRAIN_METRICS = load_model_artifacts()
 # ---------------------------------------------------------
 # EXPLANATIONS
 # ---------------------------------------------------------
+def explain_channels(data):
+    ch1 = data["channel1"]
+    ch2 = data["channel2"]
+    ch3 = data["channel3"]
+
+    # Default explanation
+    explanation = []
+
+    # High-risk: No strong advisor channel
+    if ch1 == 0 and ch2 == 0 and ch3 == 0:
+        explanation.append("Customer came through a low-engagement channel (0,0,0) — usually walk-in, telemarketing or low-advice channels, leading to higher lapse.")
+    
+    # Agent-like channel
+    if ch1 == 1 and ch2 == 0 and ch3 == 0:
+        explanation.append("Customer acquired through advisor/agent — usually lower lapse risk due to strong follow-up.")
+    
+    # Online/Digital
+    if ch1 == 0 and ch2 == 1 and ch3 == 0:
+        explanation.append("Customer acquired through digital/online channel — medium lapse due to limited counselling.")
+    
+    # Bancassurance
+    if ch1 == 0 and ch2 == 0 and ch3 == 1:
+        explanation.append("Customer bought through bancassurance channel — typically more stable with moderate lapse.")
+    
+    # Any unusual or mixed pattern
+    if len(explanation) == 0:
+        explanation.append("Customer acquired through a mixed or less common channel combination.")
+
+    return explanation
+
 def explain_low(data):
     out=[]
     if data["premium_amount"] <= 3000: out.append("Premium is affordable")
@@ -326,6 +356,9 @@ def predict_page():
             for x in explain_medium(data): st.write("- " + x)
         else:
             for x in explain_low(data): st.write("- " + x)
+        st.subheader("Channel Interpretation")
+        for x in explain_channels(data):
+            st.write("- " + x)
 
 # ---------------------------------------------------------
 # PERFORMANCE PAGE
