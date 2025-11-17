@@ -108,11 +108,11 @@ def explain_high(data):
         out.append("Model detected high risk")
 
     out.append("\n**Recommended Retention Strategies:**")
-    out.append("- Offer premium payment reminders or auto-debit option")
-    out.append("- Provide a personalized follow-up call through an agent")
-    out.append("- Explain long-term benefits clearly to increase commitment")
-    out.append("- Give a small loyalty reward or discount if applicable")
-    out.append("- Review and restructure premium frequency if needed")
+    out.append("Offer premium payment reminders or auto-debit option")
+    out.append("Provide a personalized follow-up call through an agent")
+    out.append("Explain long-term benefits clearly to increase commitment")
+    out.append("Give a small loyalty reward or discount if applicable")
+    out.append("Review and restructure premium frequency if needed")
 
     return out
 
