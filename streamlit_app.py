@@ -276,7 +276,7 @@ def predict_page():
     )
 
     st.title("Predict Policy Lapse Risk")
-    st.write("FEATURE ORDER:", FEATURE_ORDER)
+  #  st.write("FEATURE ORDER:", FEATURE_ORDER)
 
 
     age = st.number_input("Age", 18, 80, 30)
