@@ -94,12 +94,26 @@ def explain_medium(data):
     return out
 
 def explain_high(data):
-    out=[]
-    if data["policy_amount"] > 500000: out.append("High policy amount")
-    if data["premium_amount"] > 3000: out.append("Premium amount is high")
-    if data["policy_tenure_years"] < 2: out.append("Short tenure increases risk")
-    if data["substandard_risk"] == 1: out.append("Substandard risk indicator")
-    if len(out)==0: out.append("Model detected high risk")
+    out = []
+    if data["policy_amount"] > 500000:
+        out.append("High policy amount")
+    if data["premium_amount"] > 3000:
+        out.append("Premium amount is high")
+    if data["policy_tenure_years"] < 2:
+        out.append("Short tenure increases risk")
+    if data["substandard_risk"] == 1:
+        out.append("Substandard risk indicator")
+
+    if len(out) == 0:
+        out.append("Model detected high risk")
+
+    out.append("\n**Recommended Retention Strategies:**")
+    out.append("- Offer premium payment reminders or auto-debit option")
+    out.append("- Provide a personalized follow-up call through an agent")
+    out.append("- Explain long-term benefits clearly to increase commitment")
+    out.append("- Give a small loyalty reward or discount if applicable")
+    out.append("- Review and restructure premium frequency if needed")
+
     return out
 
 def classify_risk(prob):
