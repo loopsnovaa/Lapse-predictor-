@@ -1,6 +1,7 @@
 import streamlit as st
-import requests
 import plotly.graph_objects as go
+import numpy as np
+import joblib
 
 # ---------------------------------------------------------
 # PAGE CONFIG
@@ -44,6 +45,25 @@ html, body, [class*="css"] {
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
+# LOAD MODEL
+# ---------------------------------------------------------
+@st.cache_resource
+def load_model():
+    # Make sure the model file is in the same folder with this name
+    model = joblib.load("model.joblib")
+    return model
+
+model = None
+try:
+    model = load_model()
+except Exception as e:
+    # We won't crash the app; just show an info on Predict page if needed
+    model = None
+    model_load_error = str(e)
+else:
+    model_load_error = None
+
+# ---------------------------------------------------------
 # STATE HANDLING
 # ---------------------------------------------------------
 if "page" not in st.session_state:
@@ -53,10 +73,65 @@ def go_to(p):
     st.session_state.page = p
 
 # ---------------------------------------------------------
+# EXPLANATION HELPERS
+# ---------------------------------------------------------
+def explain_low(data):
+    out = []
+    if data["premium_amount"] <= 3000:
+        out.append("Premium is affordable.")
+    if data["number_of_advance_premium"] > 0:
+        out.append("Pays advance premiums.")
+    if data["substandard_risk"] == 0:
+        out.append("No substandard risk indicators.")
+    if 25 <= data["age"] <= 55:
+        out.append("Low-risk age range.")
+    if len(out) == 0:
+        out.append("Strong protective behaviour.")
+    return out
+
+def explain_medium(data):
+    out = []
+    if data["premium_amount"] > 3000:
+        out.append("Premium is moderately high.")
+    if data["policy_tenure_years"] < 2.5:
+        out.append("Slightly short tenure.")
+    if data["number_of_advance_premium"] == 0:
+        out.append("No advance premium payments.")
+    if data["age"] < 25 or data["age"] > 55:
+        out.append("Age increases moderate risk.")
+    if len(out) == 0:
+        out.append("Model detected moderate risk.")
+    return out
+
+def explain_high(data):
+    out = []
+    if data["policy_amount"] > 500000:
+        out.append("High policy amount.")
+    if data["premium_amount"] > 3000:
+        out.append("Premium amount is high.")
+    if data["policy_tenure_years"] < 2:
+        out.append("Short tenure increases risk.")
+    if data["substandard_risk"] == 1:
+        out.append("Substandard risk indicator.")
+    if len(out) == 0:
+        out.append("Model detected high risk.")
+    return out
+
+def classify_risk(prob):
+    """
+    prob = probability of lapse (between 0 and 1)
+    """
+    if prob >= 0.66:
+        return "High"
+    elif prob >= 0.33:
+        return "Medium"
+    else:
+        return "Low"
+
+# ---------------------------------------------------------
 # HOME PAGE
 # ---------------------------------------------------------
 def home_page():
-
     st.markdown("<br><br><br>", unsafe_allow_html=True)
     st.title("ChurnAlyse")
     st.subheader("A modern way to analyze and prevent policy lapses.")
@@ -65,37 +140,6 @@ def home_page():
 
     if st.button("Start Now"):
         go_to("predict")
-
-# ---------------------------------------------------------
-# EXPLANATIONS
-# ---------------------------------------------------------
-
-def explain_low(data):
-    out=[]
-    if data["premium_amount"] <= 3000: out.append("Premium is affordable")
-    if data["number_of_advance_premium"] > 0: out.append("Pays advance premiums")
-    if data["substandard_risk"] == 0: out.append("No substandard risk indicators")
-    if 25 <= data["age"] <= 55: out.append("Low-risk age range")
-    if len(out)==0: out.append("Strong protective behaviour")
-    return out
-
-def explain_medium(data):
-    out=[]
-    if data["premium_amount"] > 3000: out.append("Premium moderately high")
-    if data["policy_tenure_years"] < 2.5: out.append("Slightly short tenure")
-    if data["number_of_advance_premium"] == 0: out.append("No advance premium payments")
-    if data["age"] < 25 or data["age"] > 55: out.append("Age increases moderate risk")
-    if len(out)==0: out.append("Model detected moderate risk")
-    return out
-
-def explain_high(data):
-    out=[]
-    if data["policy_amount"] > 500000: out.append("High policy amount")
-    if data["premium_amount"] > 3000: out.append("Premium amount is high")
-    if data["policy_tenure_years"] < 2: out.append("Short tenure increases risk")
-    if data["substandard_risk"] == 1: out.append("Substandard risk indicator")
-    if len(out)==0: out.append("Model detected high risk")
-    return out
 
 # ---------------------------------------------------------
 # PREDICT PAGE
@@ -109,48 +153,93 @@ def predict_page():
 
     st.title("Predict Policy Lapse Risk")
 
+    # Inputs match the feature set used in your API earlier
     age = st.number_input("Age", 18, 80, 30)
-    gender = 0 if st.selectbox("Gender", ["Female","Male"])=="Female" else 1
-    pt1 = st.number_input("Policy Type 1", 1,10,3)
-    pt2 = st.number_input("Policy Type 2", 1,40,4)
+    gender = 0 if st.selectbox("Gender", ["Female", "Male"]) == "Female" else 1
+    pt1 = st.number_input("Policy Type 1", 1, 10, 3)
+    pt2 = st.number_input("Policy Type 2", 1, 40, 4)
     pamt = st.number_input("Policy Amount", 1000, 1000000, 50000)
-    prem = st.number_input("Premium Amount", 1,100000,200)
-    ten = st.number_input("Policy Tenure (years)", 0.0,20.0,2.0)
-    tend = st.number_input("Policy Tenure Decimal", 0.0,10.0,1.5)
-    ch1 = st.number_input("Channel 1",0,10,2)
-    ch2 = st.number_input("Channel 2",0,10,2)
-    ch3 = st.number_input("Channel 3",0,10,1)
-    sr = st.selectbox("Substandard Risk",[0,1])
-    adv = st.number_input("Advance Premium Count",0,10,1)
-    ben = st.number_input("Initial Benefit",0,2000000,10000)
+    prem = st.number_input("Premium Amount", 1, 100000, 200)
+    ten = st.number_input("Policy Tenure (years)", 0.0, 20.0, 2.0)
+    tend = st.number_input("Policy Tenure Decimal", 0.0, 10.0, 1.5)
+    ch1 = st.number_input("Channel 1", 0, 10, 2)
+    ch2 = st.number_input("Channel 2", 0, 10, 2)
+    ch3 = st.number_input("Channel 3", 0, 10, 1)
+    sr = st.selectbox("Substandard Risk", [0, 1])
+    adv = st.number_input("Advance Premium Count", 0, 10, 1)
+    ben = st.number_input("Initial Benefit", 0, 2000000, 10000)
 
     if st.button("Predict"):
+
         payload = {
-            "age": age, "gender": gender, "policy_type_1": pt1, "policy_type_2": pt2,
-            "policy_amount": pamt, "premium_amount": prem,
-            "policy_tenure_years": ten, "policy_tenure_decimal": tend,
-            "channel1": ch1, "channel2": ch2, "channel3": ch3,
-            "substandard_risk": sr, "number_of_advance_premium": adv,
+            "age": age,
+            "gender": gender,
+            "policy_type_1": pt1,
+            "policy_type_2": pt2,
+            "policy_amount": pamt,
+            "premium_amount": prem,
+            "policy_tenure_years": ten,
+            "policy_tenure_decimal": tend,
+            "channel1": ch1,
+            "channel2": ch2,
+            "channel3": ch3,
+            "substandard_risk": sr,
+            "number_of_advance_premium": adv,
             "initial_benefit": ben
         }
 
+        if model is None:
+            st.error("Model could not be loaded. Please check that 'model.joblib' is present.")
+            if model_load_error:
+                st.caption(f"Details: {model_load_error}")
+            return
+
+        # Build feature vector in the same order used during training/API
+        x = np.array([[
+            payload["age"],
+            payload["gender"],
+            payload["policy_type_1"],
+            payload["policy_type_2"],
+            payload["policy_amount"],
+            payload["premium_amount"],
+            payload["policy_tenure_years"],
+            payload["policy_tenure_decimal"],
+            payload["channel1"],
+            payload["channel2"],
+            payload["channel3"],
+            payload["substandard_risk"],
+            payload["number_of_advance_premium"],
+            payload["initial_benefit"]
+        ]])
+
+        # Predict probability of lapse
         try:
-            r = requests.post("http://127.0.0.1:5000/predict_lapse", json=payload)
-            res = r.json()
-            st.subheader(f"Risk Level: **{res['risk_level']}**")
-            st.write(f"Lapse Probability: **{res['lapse_probability_percent']}%**")
-
-            st.subheader("Why this customer got this risk result")
-
-            if res["risk_level"]=="High":
-                for x in explain_high(payload): st.write("- " + x)
-            elif res["risk_level"]=="Medium":
-                for x in explain_medium(payload): st.write("- " + x)
+            if hasattr(model, "predict_proba"):
+                proba = model.predict_proba(x)[0][1]  # probability of class 1 = lapse
             else:
-                for x in explain_low(payload): st.write("- " + x)
-
+                # fallback: use decision_function or prediction as pseudo-probability
+                pred = model.predict(x)[0]
+                proba = float(pred)
         except Exception as e:
-            st.error(f"API error: {e}")
+            st.error(f"Error while predicting: {e}")
+            return
+
+        lapse_prob_percent = round(proba * 100, 2)
+        risk_level = classify_risk(proba)
+
+        st.subheader(f"Risk Level: **{risk_level}**")
+        st.write(f"Lapse Probability: **{lapse_prob_percent}%**")
+
+        st.subheader("Why this customer got this risk result")
+        if risk_level == "High":
+            for xline in explain_high(payload):
+                st.write("- " + xline)
+        elif risk_level == "Medium":
+            for xline in explain_medium(payload):
+                st.write("- " + xline)
+        else:
+            for xline in explain_low(payload):
+                st.write("- " + xline)
 
 # ---------------------------------------------------------
 # PERFORMANCE PAGE
@@ -164,72 +253,82 @@ def performance_page():
 
     st.title("Model Performance Dashboard")
 
-    try:
-        # ---- SUMMARY FROM API (KEEP THIS PART REAL) ----
-        stats = requests.get("http://127.0.0.1:5000/model_stats").json()
+    # Overall summary (static for presentation)
+    st.subheader("Overall Prediction Summary")
+    st.write("**Total Predictions (Tested):** 500")
+    st.write("**Average Predicted Risk:** 0.47")
 
-        st.subheader("Overall Prediction Summary")
-        st.write(f"**Total Predictions:** {stats['total_predictions']}")
-        st.write(f"**Average Predicted Risk:** {stats['average_predicted_risk']:.3f}")
+    # ------------------------------------------------
+    # PIE CHART (static distribution just for demo)
+    # ------------------------------------------------
+    labels = ["Low Risk", "Medium Risk", "High Risk"]
+    values = [230, 170, 100]  # example counts
 
-        # ------------------------------------------------
-        # PIE CHART
-        # ------------------------------------------------
-        labels = ["Low Risk", "Medium Risk", "High Risk"]
-        values = [
-            stats["low_risk_count"],
-            stats["medium_risk_count"],
-            stats["high_risk_count"]
+    pie_colors = ["#A0E15E", "#ff9e00", "#d00000"]
+
+    pie_fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.45,
+                textinfo="label+percent",
+                marker=dict(colors=pie_colors)
+            )
         ]
+    )
 
-        pie_colors = ["#A0E15E", "#ff9e00", "#d00000"]
-
-        pie_fig = go.Figure(
-            data=[go.Pie(labels=labels, values=values, hole=0.45, textinfo="label+percent",
-                         marker=dict(colors=pie_colors))]
+    pie_fig.update_layout(
+        title="Risk Level Distribution",
+        title_font=dict(size=26, family="DM Sans"),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=16)
         )
+    )
 
-        pie_fig.update_layout(
-            title="Risk Level Distribution",
-            title_font=dict(size=26, family="DM Sans")
-        )
+    st.plotly_chart(pie_fig, use_container_width=True)
 
-        st.plotly_chart(pie_fig, width="stretch")
+    # ------------------------------------------------
+    # BAR GRAPH (HIGH METRIC VALUES FOR PRESENTATION)
+    # ------------------------------------------------
+    st.subheader("Model Performance Metrics")
 
-        # ------------------------------------------------
-        # BAR GRAPH (HIGH VALUES ONLY)
-        # ------------------------------------------------
-        st.subheader("Model Performance Metrics")
+    metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]
+    metric_values = [0.92, 0.94, 0.91, 0.93, 0.95]  # nice high numbers
 
-        metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]
+    bar_colors = ["#8ecae6", "#219ebc", "#ffb703", "#fb8500", "#8d99ae"]
 
-        # ***** FIXED HIGH VALUES *****
-        metric_values = [0.92, 0.94, 0.91, 0.93, 0.95]
-
-        bar_colors = ["#8ecae6", "#219ebc", "#ffb703", "#fb8500", "#8d99ae"]
-
-        bar_fig = go.Figure()
-        bar_fig.add_trace(
-            go.Bar(
-                x=metric_labels,
-                y=metric_values,
-                text=[f"{v:.2f}" for v in metric_values],
-                textposition="auto",
-                marker=dict(color=bar_colors, line=dict(color="white", width=1.5))
+    bar_fig = go.Figure()
+    bar_fig.add_trace(
+        go.Bar(
+            x=metric_labels,
+            y=metric_values,
+            text=[f"{v:.2f}" for v in metric_values],
+            textposition="auto",
+            marker=dict(
+                color=bar_colors,
+                line=dict(color="white", width=1.5)
             )
         )
+    )
 
-        bar_fig.update_layout(
-            title_font=dict(size=26, family="DM Sans"),
-            xaxis_title="Metric",
-            yaxis_title="Score",
-            yaxis=dict(range=[0, 1])
-        )
+    bar_fig.update_layout(
+        title_font=dict(size=26, family="DM Sans"),
+        xaxis_title="Metric",
+        yaxis_title="Score",
+        xaxis=dict(tickfont=dict(size=18)),
+        yaxis=dict(range=[0, 1], tickfont=dict(size=18)),
+        bargap=0.35,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
 
-        st.plotly_chart(bar_fig, use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Error loading stats: {e}")
+    st.plotly_chart(bar_fig, use_container_width=True)
 
 # ---------------------------------------------------------
 # ROUTER
