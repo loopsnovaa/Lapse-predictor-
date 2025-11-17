@@ -2,14 +2,8 @@ import streamlit as st
 import plotly.graph_objects as go
 import random
 
-# ---------------------------------------------------------
-# PAGE CONFIG
-# ---------------------------------------------------------
 st.set_page_config(page_title="ChurnAlyse", layout="wide")
 
-# ---------------------------------------------------------
-# GLOBAL CSS (UNCHANGED)
-# ---------------------------------------------------------
 CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 
@@ -45,18 +39,12 @@ html, body, [class*="css"] {
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# STATE HANDLING
-# ---------------------------------------------------------
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
 def go_to(p):
     st.session_state.page = p
 
-# ---------------------------------------------------------
-# EXPLANATION LOGIC (UNCHANGED)
-# ---------------------------------------------------------
 def explain_channels(data):
     ch1 = data["channel1"]
     ch2 = data["channel2"]
@@ -119,9 +107,6 @@ def classify_risk(prob):
     elif prob >= 0.33: return "Medium"
     else: return "Low"
 
-# ---------------------------------------------------------
-# HOME PAGE
-# ---------------------------------------------------------
 def home_page():
 
     st.markdown("<br><br><br>", unsafe_allow_html=True)
@@ -133,9 +118,6 @@ def home_page():
     if st.button("Start Now"):
         go_to("predict")
 
-# ---------------------------------------------------------
-# PREDICT PAGE (DUMMY MODEL)
-# ---------------------------------------------------------
 def predict_page():
 
     # Sidebar navigation
@@ -165,7 +147,6 @@ def predict_page():
     adv = st.number_input("Advance Premium Count", 0, 10, 1)
     ben = st.number_input("Initial Benefit", 0, 2000000, 10000)
 
-    # ------------- PREDICT BUTTON -------------
     if st.button("Predict"):
 
         payload = {
@@ -185,7 +166,6 @@ def predict_page():
             "initial_benefit": ben,
         }
 
-        # Dummy probability for demo
         proba = random.uniform(0.10, 0.90)
         lapse_prob_percent = round(proba * 100, 2)
         risk_level = classify_risk(proba)
@@ -193,7 +173,6 @@ def predict_page():
         st.subheader(f"Risk Level: **{risk_level}**")
         st.write(f"Lapse Probability: **{lapse_prob_percent}%**")
 
-        # ------------- MAIN EXPLANATION -------------
         st.subheader("Why this customer got this risk result")
         if risk_level == "High":
             for x in explain_high(payload):
@@ -205,14 +184,10 @@ def predict_page():
             for x in explain_low(payload):
                 st.write("- " + x)
 
-        # ------------- CHANNEL EXPLANATION -------------
         st.subheader("Channel Interpretation")
         for x in explain_channels(payload):
             st.write("- " + x)
 
-#------
-# PERFORMANCE PAGE (STATIC HIGH METRICS)
-# ---------------------------------------------------------
 def performance_page():
 
     st.sidebar.title("Navigation")
@@ -266,9 +241,6 @@ def performance_page():
 
     st.plotly_chart(bar_fig, use_container_width=True)
 
-# ---------------------------------------------------------
-# ROUTER
-# ---------------------------------------------------------
 if st.session_state.page == "home":
     home_page()
 elif st.session_state.page == "predict":
