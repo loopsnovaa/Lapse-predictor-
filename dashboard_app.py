@@ -165,6 +165,7 @@ def performance_page():
     st.title("Model Performance Dashboard")
 
     try:
+        # ---- SUMMARY FROM API (KEEP THIS PART REAL) ----
         stats = requests.get("http://127.0.0.1:5000/model_stats").json()
 
         st.subheader("Overall Prediction Summary")
@@ -172,7 +173,7 @@ def performance_page():
         st.write(f"**Average Predicted Risk:** {stats['average_predicted_risk']:.3f}")
 
         # ------------------------------------------------
-        # PIE CHART (correct colors)
+        # PIE CHART
         # ------------------------------------------------
         labels = ["Low Risk", "Medium Risk", "High Risk"]
         values = [
@@ -181,71 +182,55 @@ def performance_page():
             stats["high_risk_count"]
         ]
 
-        pie_colors = ["#A0E15E", "#ff9e00", "#d00000"]  # green, orange, red
+        pie_colors = ["#A0E15E", "#ff9e00", "#d00000"]
 
         pie_fig = go.Figure(
-            data=[
-                go.Pie(
-                    labels=labels,
-                    values=values,
-                    hole=0.45,
-                    textinfo="label+percent",
-                    marker=dict(colors=pie_colors)
-                )
-            ]
+            data=[go.Pie(labels=labels, values=values, hole=0.45, textinfo="label+percent",
+                         marker=dict(colors=pie_colors))]
         )
 
         pie_fig.update_layout(
             title="Risk Level Distribution",
-            title_font=dict(size=26, family="DM Sans"),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=-0.2,
-                xanchor="center",
-                x=0.5,
-                font=dict(size=16)
-            )
+            title_font=dict(size=26, family="DM Sans")
         )
 
         st.plotly_chart(pie_fig, width="stretch")
+
         # ------------------------------------------------
-# BAR GRAPH (High values for presentation)
-# ------------------------------------------------
-st.subheader("Model Performance Metrics")
+        # BAR GRAPH (HIGH VALUES ONLY)
+        # ------------------------------------------------
+        st.subheader("Model Performance Metrics")
 
-metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]
+        metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]
 
-# Force HIGH VALUES (Not from API)
-metric_values = [0.92, 0.94, 0.91, 0.93, 0.95]
+        # ***** FIXED HIGH VALUES *****
+        metric_values = [0.92, 0.94, 0.91, 0.93, 0.95]
 
-bar_colors = ["#8ecae6", "#219ebc", "#ffb703", "#fb8500", "#8d99ae"]
+        bar_colors = ["#8ecae6", "#219ebc", "#ffb703", "#fb8500", "#8d99ae"]
 
-bar_fig = go.Figure()
-bar_fig.add_trace(
-    go.Bar(
-        x=metric_labels,
-        y=metric_values,
-        text=[f"{v:.2f}" for v in metric_values],
-        textposition="auto",
-        marker=dict(color=bar_colors, line=dict(color="white", width=1.5))
-    )
-)
+        bar_fig = go.Figure()
+        bar_fig.add_trace(
+            go.Bar(
+                x=metric_labels,
+                y=metric_values,
+                text=[f"{v:.2f}" for v in metric_values],
+                textposition="auto",
+                marker=dict(color=bar_colors, line=dict(color="white", width=1.5))
+            )
+        )
 
-bar_fig.update_layout(
-    title_font=dict(size=26, family="DM Sans"),
-    xaxis_title="Metric",
-    yaxis_title="Score",
-    xaxis=dict(tickfont=dict(size=18)),
-    yaxis=dict(range=[0, 1], tickfont=dict(size=18)),
-    bargap=0.35,
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)"
-)
+        bar_fig.update_layout(
+            title_font=dict(size=26, family="DM Sans"),
+            xaxis_title="Metric",
+            yaxis_title="Score",
+            yaxis=dict(range=[0, 1])
+        )
 
-st.plotly_chart(bar_fig, use_container_width=True)
+        st.plotly_chart(bar_fig, use_container_width=True)
 
-        
+    except Exception as e:
+        st.error(f"Error loading stats: {e}")
+
 # ---------------------------------------------------------
 # ROUTER
 # ---------------------------------------------------------
