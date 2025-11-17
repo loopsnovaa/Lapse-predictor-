@@ -133,7 +133,7 @@ def explain_channels(data):
     
     # Online/Digital
     if ch1 == 0 and ch2 == 1 and ch3 == 0:
-        explanation.append("Customer acquired through digital/online channel — medium lapse due to limited counselling.")
+        explanation.append("Customer acquired through digital/online channel often due to limited counselling hence increasing the risk of churn.")
     
     # Bancassurance
     if ch1 == 0 and ch2 == 0 and ch3 == 1:
