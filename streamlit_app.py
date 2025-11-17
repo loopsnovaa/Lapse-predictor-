@@ -20,11 +20,11 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stAppViewContainer"] {
-    background-color: #c6def1 !important;
+    background-color: #0d3a66 !important;
 }
 
 [data-testid="stSidebar"] {
-    background-color: #eef5ff !important;
+    background-color: #0f4c81 !important;
 }
 
 .stButton>button {
