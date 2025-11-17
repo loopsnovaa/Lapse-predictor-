@@ -217,12 +217,13 @@ def performance_page():
 
         metric_labels = ["Accuracy", "Precision", "Recall", "F1-Score", "AUC"]
         metric_values = [
-            stats["accuracy"],
-            stats["precision"],
-            stats["recall"],
-            stats["f1_score"],
-            stats["auc"]
+              stats["accuracy"],
+              stats["precision"],
+              stats["recall"],
+              stats["f1_score"],
+              stats["auc"]
         ]
+
 
         bar_colors = [
             "#8ecae6",
