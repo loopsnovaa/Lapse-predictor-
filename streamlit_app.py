@@ -145,26 +145,35 @@ def explain_high(data):
 # ---------------------------------------------------------
 # PREPROCESSING
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# PREPROCESSING (FIXED — NO SCALER)
+# ---------------------------------------------------------
 def preprocess_input(data_dict):
     df = pd.DataFrame([data_dict])
 
+    # Create engineered features
     df["premium_to_benefit_ratio"] = df["premium_amount"] / (df["policy_amount"] + 1)
     df["age_squared"] = df["age"] ** 2
     df["premium_squared"] = df["premium_amount"] ** 2
     df["benefit_squared"] = df["policy_amount"] ** 2
 
+    # Arrange in training feature order
     df = df[FEATURE_ORDER]
 
-    # ❌ REMOVE SCALER (it is mismatched)
+    # ❌ DO NOT SCALE — SCALER WAS TRAINED ON WRONG FEATURE COUNT
     return df.values
+
 
 # ---------------------------------------------------------
 # PREDICT + LOG
 # ---------------------------------------------------------
 def predict_and_log(data_dict):
-    X_scaled = preprocess_input(data_dict)
-    proba = float(MODEL.predict_proba(X_scaled)[0][1])
+    X = preprocess_input(data_dict)
 
+    # Prediction from model
+    proba = float(MODEL.predict_proba(X)[0][1])
+
+    # Thresholds
     if proba < 0.30:
         risk = "Low"
     elif proba < 0.70:
@@ -172,6 +181,7 @@ def predict_and_log(data_dict):
     else:
         risk = "High"
 
+    # Logging
     record = {
         "timestamp": datetime.now().isoformat(),
         "input": data_dict,
@@ -183,6 +193,7 @@ def predict_and_log(data_dict):
         f.write(json.dumps(record) + "\n")
 
     return proba, risk
+
 
 # ---------------------------------------------------------
 # LOAD STATS
@@ -197,11 +208,13 @@ def load_prediction_stats():
             "high_risk_count": 0,
         }
 
-    records=[]
-    with open(PREDICTION_LOG,"r") as f:
+    records = []
+    with open(PREDICTION_LOG, "r") as f:
         for line in f:
-            try: records.append(json.loads(line))
-            except: pass
+            try:
+                records.append(json.loads(line))
+            except:
+                pass
 
     if not records:
         return {
@@ -212,8 +225,8 @@ def load_prediction_stats():
             "high_risk_count": 0,
         }
 
-    probs=[r["predicted_probability"] for r in records]
-    levels=[r["risk_level"] for r in records]
+    probs = [r["predicted_probability"] for r in records]
+    levels = [r["risk_level"] for r in records]
 
     return {
         "total_predictions": len(probs),
@@ -222,6 +235,9 @@ def load_prediction_stats():
         "medium_risk_count": levels.count("Medium"),
         "high_risk_count": levels.count("High"),
     }
+
+
+
 
 # ---------------------------------------------------------
 # SESSION STATE
