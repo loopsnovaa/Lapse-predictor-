@@ -138,42 +138,54 @@ def home_page():
 # ---------------------------------------------------------
 def predict_page():
 
+    # Sidebar navigation
     st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Predict", "Performance"],
-                     key="nav_pred",
-                     on_change=lambda: go_to(st.session_state.nav_pred.lower()))
+    st.sidebar.radio(
+        "Go to:",
+        ["Predict", "Performance"],
+        key="nav_pred",
+        on_change=lambda: go_to(st.session_state.nav_pred.lower())
+    )
 
     st.title("Predict Policy Lapse Risk")
 
-    # ---------------- INPUTS ----------------
+    # ------------- INPUTS -------------
     age = st.number_input("Age", 18, 80, 30)
-    gender = 0 if st.selectbox("Gender", ["Female","Male"])=="Female" else 1
-    pt1 = st.number_input("Policy Type 1", 1,10,3)
-    pt2 = st.number_input("Policy Type 2", 1,40,4)
+    gender = 0 if st.selectbox("Gender", ["Female", "Male"]) == "Female" else 1
+    pt1 = st.number_input("Policy Type 1", 1, 10, 3)
+    pt2 = st.number_input("Policy Type 2", 1, 40, 4)
     pamt = st.number_input("Policy Amount", 1000, 1000000, 50000)
-    prem = st.number_input("Premium Amount", 1,100000,200)
-    ten = st.number_input("Policy Tenure (years)", 0.0,20.0,2.0)
-    tend = st.number_input("Policy Tenure Decimal", 0.0,10.0,1.5)
-    ch1 = st.number_input("Channel 1",0,10,2)
-    ch2 = st.number_input("Channel 2",0,10,2)
-    ch3 = st.number_input("Channel 3",0,10,1)
-    sr = st.selectbox("Substandard Risk",[0,1])
-    adv = st.number_input("Advance Premium Count",0,10,1)
-    ben = st.number_input("Initial Benefit",0,2000000,10000)
+    prem = st.number_input("Premium Amount", 1, 100000, 200)
+    ten = st.number_input("Policy Tenure (years)", 0.0, 20.0, 2.0)
+    tend = st.number_input("Policy Tenure Decimal", 0.0, 10.0, 1.5)
+    ch1 = st.number_input("Channel 1", 0, 10, 2)
+    ch2 = st.number_input("Channel 2", 0, 10, 2)
+    ch3 = st.number_input("Channel 3", 0, 10, 1)
+    sr = st.selectbox("Substandard Risk", [0, 1])
+    adv = st.number_input("Advance Premium Count", 0, 10, 1)
+    ben = st.number_input("Initial Benefit", 0, 2000000, 10000)
 
-    # ---------------- PREDICT BUTTON ----------------
+    # ------------- PREDICT BUTTON -------------
     if st.button("Predict"):
 
         payload = {
-            "age": age, "gender": gender, "policy_type_1": pt1, "policy_type_2": pt2,
-            "policy_amount": pamt, "premium_amount": prem,
-            "policy_tenure_years": ten, "policy_tenure_decimal": tend,
-            "channel1": ch1, "channel2": ch2, "channel3": ch3,
-            "substandard_risk": sr, "number_of_advance_premium": adv,
-            "initial_benefit": ben
+            "age": age,
+            "gender": gender,
+            "policy_type_1": pt1,
+            "policy_type_2": pt2,
+            "policy_amount": pamt,
+            "premium_amount": prem,
+            "policy_tenure_years": ten,
+            "policy_tenure_decimal": tend,
+            "channel1": ch1,
+            "channel2": ch2,
+            "channel3": ch3,
+            "substandard_risk": sr,
+            "number_of_advance_premium": adv,
+            "initial_benefit": ben,
         }
 
-        # ---------------- DUMMY PREDICTION ----------------
+        # Dummy probability for demo
         proba = random.uniform(0.10, 0.90)
         lapse_prob_percent = round(proba * 100, 2)
         risk_level = classify_risk(proba)
@@ -181,20 +193,23 @@ def predict_page():
         st.subheader(f"Risk Level: **{risk_level}**")
         st.write(f"Lapse Probability: **{lapse_prob_percent}%**")
 
-        # ---------------- MAIN EXPLANATION ----------------
+        # ------------- MAIN EXPLANATION -------------
         st.subheader("Why this customer got this risk result")
-
         if risk_level == "High":
-            for x in explain_high(payload): st.write("- " + x)
+            for x in explain_high(payload):
+                st.write("- " + x)
         elif risk_level == "Medium":
-            for x in explain_medium(payload): st.write("- " + x)
+            for x in explain_medium(payload):
+                st.write("- " + x)
         else:
-            for x in explain_low(payload): st.write("- " + x)
+            for x in explain_low(payload):
+                st.write("- " + x)
 
-        # ---------------- CHANNEL EXPLANATION ----------------
+        # ------------- CHANNEL EXPLANATION -------------
         st.subheader("Channel Interpretation")
         for x in explain_channels(payload):
             st.write("- " + x)
+
 -------
 # PERFORMANCE PAGE (STATIC HIGH METRICS)
 # ---------------------------------------------------------
