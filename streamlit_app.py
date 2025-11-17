@@ -139,12 +139,9 @@ def home_page():
 def predict_page():
 
     st.sidebar.title("Navigation")
-    st.sidebar.radio(
-        "Go to:",
-        ["Predict", "Performance"],
-        key="nav_pred",
-        on_change=lambda: go_to(st.session_state.nav_pred.lower())
-    )
+    st.sidebar.radio("Go to:", ["Predict", "Performance"],
+                     key="nav_pred",
+                     on_change=lambda: go_to(st.session_state.nav_pred.lower()))
 
     st.title("Predict Policy Lapse Risk")
 
@@ -165,51 +162,40 @@ def predict_page():
     ben = st.number_input("Initial Benefit",0,2000000,10000)
 
     # ---------------- PREDICT BUTTON ----------------
-    if st.button("Predict", key="predict_btn"):
+    if st.button("Predict"):
 
-        data = {
-            "age": age,
-            "gender": gender,
-            "policy_type_1": pt1,
-            "policy_type_2": pt2,
-            "policy_amount": pamt,
-            "premium_amount": prem,
-            "policy_tenure_years": ten,
-            "policy_tenure_decimal": tend,
-            "channel1": ch1,
-            "channel2": ch2,
-            "channel3": ch3,
-            "substandard_risk": sr,
-            "number_of_advance_premium": adv,
-            "initial_benefit": ben,
+        payload = {
+            "age": age, "gender": gender, "policy_type_1": pt1, "policy_type_2": pt2,
+            "policy_amount": pamt, "premium_amount": prem,
+            "policy_tenure_years": ten, "policy_tenure_decimal": tend,
+            "channel1": ch1, "channel2": ch2, "channel3": ch3,
+            "substandard_risk": sr, "number_of_advance_premium": adv,
+            "initial_benefit": ben
         }
 
-        # REAL MODEL PREDICTION
-        proba, risk = predict_and_log(data)
+        # ---------------- DUMMY PREDICTION ----------------
+        proba = random.uniform(0.10, 0.90)
+        lapse_prob_percent = round(proba * 100, 2)
+        risk_level = classify_risk(proba)
 
-        st.subheader(f"Risk Level: **{risk}**")
-        st.write(f"Lapse Probability: **{round(proba*100, 2)}%**")
+        st.subheader(f"Risk Level: **{risk_level}**")
+        st.write(f"Lapse Probability: **{lapse_prob_percent}%**")
 
-        # ---------------- EXPLANATIONS ----------------
+        # ---------------- MAIN EXPLANATION ----------------
         st.subheader("Why this customer got this risk result")
 
-        if risk == "High":
-            for x in explain_high(data): 
-                st.write("- " + x)
-        elif risk == "Medium":
-            for x in explain_medium(data):
-                st.write("- " + x)
+        if risk_level == "High":
+            for x in explain_high(payload): st.write("- " + x)
+        elif risk_level == "Medium":
+            for x in explain_medium(payload): st.write("- " + x)
         else:
-            for x in explain_low(data):
-                st.write("- " + x)
+            for x in explain_low(payload): st.write("- " + x)
 
         # ---------------- CHANNEL EXPLANATION ----------------
         st.subheader("Channel Interpretation")
-        for x in explain_channels(data):
+        for x in explain_channels(payload):
             st.write("- " + x)
-
-
-# ---------------------------------------------------------
+-------
 # PERFORMANCE PAGE (STATIC HIGH METRICS)
 # ---------------------------------------------------------
 def performance_page():
