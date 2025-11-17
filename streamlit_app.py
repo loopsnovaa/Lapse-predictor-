@@ -50,26 +50,20 @@ def explain_channels(data):
     ch2 = data["channel2"]
     ch3 = data["channel3"]
 
-    # Default explanation
     explanation = []
 
-    # High-risk: No strong advisor channel
     if ch1 == 0 and ch2 == 0 and ch3 == 0:
         explanation.append("Customer came through a low-engagement channel (0,0,0) — usually walk-in, telemarketing or low-advice channels, leading to higher lapse.")
     
-    # Agent-like channel
     if ch1 == 1 and ch2 == 0 and ch3 == 0:
         explanation.append("Customer acquired through advisor/agent — usually lower lapse risk due to strong follow-up.")
     
-    # Online/Digital
     if ch1 == 0 and ch2 == 1 and ch3 == 0:
         explanation.append("Customer acquired through digital/online channel — medium lapse due to limited counselling.")
     
-    # Bancassurance
     if ch1 == 0 and ch2 == 0 and ch3 == 1:
         explanation.append("Customer bought through bancassurance channel — typically more stable with moderate lapse.")
     
-    # Any unusual or mixed pattern
     if len(explanation) == 0:
         explanation.append("Customer acquired through a mixed or less common channel combination.")
 
@@ -94,27 +88,30 @@ def explain_medium(data):
     return out
 
 def explain_high(data):
-    out = []
+    reasons = []
+
     if data["policy_amount"] > 500000:
-        out.append("High policy amount")
+        reasons.append("High policy amount")
     if data["premium_amount"] > 3000:
-        out.append("Premium amount is high")
+        reasons.append("Premium amount is high")
     if data["policy_tenure_years"] < 2:
-        out.append("Short tenure increases risk")
+        reasons.append("Short tenure increases risk")
     if data["substandard_risk"] == 1:
-        out.append("Substandard risk indicator")
+        reasons.append("Substandard risk indicator")
 
-    if len(out) == 0:
-        out.append("Model detected high risk")
+    if len(reasons) == 0:
+        reasons.append("Model detected high risk")
 
-    out.append("\n**Recommended Retention Strategies:**")
-    out.append("Offer premium payment reminders or auto-debit option")
-    out.append("Provide a personalized follow-up call through an agent")
-    out.append("Explain long-term benefits clearly to increase commitment")
-    out.append("Give a small loyalty reward or discount if applicable")
-    out.append("Review and restructure premium frequency if needed")
+    strategies = [
+        "Offer premium payment reminders or auto-debit option",
+        "Provide a personalized follow-up call through an agent",
+        "Explain long-term benefits clearly to increase commitment",
+        "Give a small loyalty reward or discount if applicable",
+        "Review and restructure premium frequency if needed"
+    ]
 
-    return out
+    return reasons, strategies
+
 
 def classify_risk(prob):
     if prob >= 0.66: return "High"
