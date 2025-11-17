@@ -50,7 +50,8 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 @st.cache_resource
 def load_model():
     # Make sure the model file is in the same folder with this name
-    model = joblib.load("model.joblib")
+    model = joblib.load("d254cc71-61a0-471e-87ed-3566b505fdcf.joblib")
+
     return model
 
 model = None
