@@ -210,7 +210,7 @@ def predict_page():
         for x in explain_channels(payload):
             st.write("- " + x)
 
--------
+#------
 # PERFORMANCE PAGE (STATIC HIGH METRICS)
 # ---------------------------------------------------------
 def performance_page():
