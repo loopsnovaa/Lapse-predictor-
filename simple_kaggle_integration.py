@@ -1,3 +1,4 @@
+
 import os
 import sys
 import warnings
@@ -34,7 +35,6 @@ SCALER_PATH = "models/scaler_new.joblib"
 MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
 METRICS_PATH = "models/model_metrics_new.joblib"
 
-
 def load_insurance_data(path: str) -> pd.DataFrame:
     print("=" * 60)
     print(f"LOADING AGGREGATE DATASET FROM {path}")
@@ -46,6 +46,7 @@ def load_insurance_data(path: str) -> pd.DataFrame:
         if os.path.exists("finalapi.csv"):
              path = "finalapi.csv"
              print(f"Found file at root: {path}")
+
 
     try:
         df = pd.read_csv(path)
@@ -71,6 +72,13 @@ def load_insurance_data(path: str) -> pd.DataFrame:
 
     # Filter out invalid records (e.g., new business with 0 previous policies)
     df = df[df['PREV_POLY_INFORCE_QTY'] > 0].copy()
+
+    df = pd.read_csv(path)
+    if df.shape[1] == 1:
+        df = pd.read_csv(path, sep=";")
+    if df.shape[1] == 1:
+        df = pd.read_csv(path, sep="\t")
+
 
     print(f"✓ Loaded dataset with shape: {df.shape}")
     print(f"✓ Target column 'policy_lapse' engineered based on retention counts.")
@@ -103,37 +111,36 @@ def train_xgboost_tuned(df: pd.DataFrame):
     X = df[feature_cols]
     y = df["policy_lapse"].astype(int)
 
-    # Split Data: 70% Training, 30% Testing
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42, stratify=y
     )
 
-    # Ensure models directory exists for saving output
+
     os.makedirs("models", exist_ok=True)
     
     # Save Feature Order (Critical for API consistency)
     joblib.dump(feature_cols, FEATURE_ORDER_PATH)
     print(f"✓ Saved feature order to {FEATURE_ORDER_PATH}")
 
-    # Scaling
+
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     joblib.dump(scaler, SCALER_PATH)
     print(f"✓ Saved scaler to {SCALER_PATH}")
 
-    # Class Balancing (SMOTE-ENN)
+
     print("Applying SMOTE-ENN for class balancing...")
     smote_enn = SMOTEENN(random_state=42)
     X_train_bal, y_train_bal = smote_enn.fit_resample(X_train_scaled, y_train)
     print(f"✓ Balanced training distribution: {Counter(y_train_bal)}")
 
-    # Calculate Scale Pos Weight for XGBoost
+
     neg, pos = Counter(y_train_bal).get(0, 0), Counter(y_train_bal).get(1, 0)
     scale_pos_weight = neg / pos if pos > 0 else 1.0
     print(f"✓ Using scale_pos_weight = {scale_pos_weight:.3f}")
 
-    # --- MODEL SETUP ---
+
     base_xgb = XGBClassifier(
         random_state=42,
         eval_metric="logloss",
@@ -142,7 +149,7 @@ def train_xgboost_tuned(df: pd.DataFrame):
         n_jobs=-1,
     )
 
-    # Hyperparameter Grid (Simpler trees worked best for generalization)
+
     param_distributions = {
         "n_estimators": [300, 400, 500, 600],
         "max_depth": [4, 5, 6], 
@@ -157,7 +164,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
     search = RandomizedSearchCV(
         base_xgb,
         param_distributions=param_distributions,
-        n_iter=20, 
         scoring="f1",
         cv=3,
         verbose=1,
@@ -170,11 +176,10 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print(f"✓ Best params: {search.best_params_}")
     print(f"✓ Best CV F1 score: {search.best_score_:.4f}")
 
-    # --- PREDICTION & OPTIMIZATION ---
-    # Get raw probabilities for the test set
+
     y_proba = best_model.predict_proba(X_test_scaled)[:, 1]
 
-    # Threshold Optimization Loop
+    
     best_accuracy = 0
     best_threshold = 0
     thresholds = np.arange(0.01, 1.01, 0.01)
@@ -187,12 +192,12 @@ def train_xgboost_tuned(df: pd.DataFrame):
             best_accuracy = acc
             best_threshold = t
             
-    # Apply Optimal Threshold (Found to be around 0.11 - 0.12)
+    
     y_pred = (y_proba >= best_threshold).astype(int) 
 
     print(f"✓ Optimized Accuracy (Maximized): {best_accuracy:.4f} at Optimal Threshold: {best_threshold:.2f}")
 
-    # --- FINAL EVALUATION METRICS ---
+    
     acc = accuracy_score(y_test, y_pred)
     prec = precision_score(y_test, y_pred)
     rec = recall_score(y_test, y_pred)
@@ -209,7 +214,7 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print("\nClassification Report:\n")
     print(classification_report(y_test, y_pred))
 
-    # --- FEATURE IMPORTANCE ---
+
     importances = best_model.feature_importances_
     feature_importance_df = pd.DataFrame({
         'Feature': X.columns,
@@ -222,7 +227,7 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print("=" * 60)
     print(feature_importance_df)
 
-    # --- SAVE RESOURCES ---
+
     joblib.dump(best_model, MODEL_PATH)
     print(f"✓ Saved tuned XGBoost model to {MODEL_PATH}")
 

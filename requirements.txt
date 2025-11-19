@@ -1,11 +1,20 @@
 streamlit
 pandas
+<<<<<<< HEAD
 numpy
+=======
+numpy==2.1.3
+>>>>>>> dbe45546013665b73153f2860209b0e38215a21b
 scikit-learn
 xgboost
 joblib
 plotly
+<<<<<<< HEAD
 matplotlib
 seaborn
+=======
+seaborn
+matplotlib
+>>>>>>> dbe45546013665b73153f2860209b0e38215a21b
 imbalanced-learn
 shap
