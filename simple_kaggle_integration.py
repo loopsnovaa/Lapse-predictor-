@@ -8,7 +8,6 @@ import joblib
 import numpy as np
 import pandas as pd
 
-# Machine Learning Libraries
 from imblearn.combine import SMOTEENN
 from sklearn.metrics import (
     accuracy_score,
@@ -24,12 +23,7 @@ from xgboost import XGBClassifier
 
 warnings.filterwarnings("ignore")
 
-# --- CONFIGURATION ---
-# Ensure this points to your actual file location for the Aggregate Data
-# If your file is named differently, update this line.
 DATA_PATH = "data/finalapi.csv" 
-
-# Paths to save the trained artifacts (These will be loaded by your Flask API)
 FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
 SCALER_PATH = "models/scaler_new.joblib"
 MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
@@ -42,7 +36,6 @@ def load_insurance_data(path: str) -> pd.DataFrame:
 
     if not os.path.exists(path):
         print(f"Warning: File not found at {path}. Please check the path.")
-        # If the file is in the root directory, try removing 'data/'
         if os.path.exists("finalapi.csv"):
              path = "finalapi.csv"
              print(f"Found file at root: {path}")
@@ -52,9 +45,6 @@ def load_insurance_data(path: str) -> pd.DataFrame:
         df = pd.read_csv(path)
     except Exception as e:
         sys.exit(f"Error reading CSV file: {e}")
-    
-    # 1. Data Cleaning
-    # Replace '99999' placeholders with NaN
     df = df.replace(99999, np.nan)
     
     required_cols = [
@@ -62,15 +52,9 @@ def load_insurance_data(path: str) -> pd.DataFrame:
         "LOSS_RATIO", "LOSS_RATIO_3YR", "GROWTH_RATE_3YR",
         "AGENCY_APPOINTMENT_YEAR", "ACTIVE_PRODUCERS", "MAX_AGE", "MIN_AGE"
     ]
-    
-    # Drop rows where critical features are NaN
     df = df.dropna(subset=required_cols).copy()
-    
-    # 2. Target Engineering (The Critical Step for High Accuracy)
-    # A lapse event (1) occurs if the Retained Policies are LESS than the Previous Policies
     df['policy_lapse'] = (df['RETENTION_POLY_QTY'] < df['PREV_POLY_INFORCE_QTY']).astype(int)
 
-    # Filter out invalid records (e.g., new business with 0 previous policies)
     df = df[df['PREV_POLY_INFORCE_QTY'] > 0].copy()
 
     df = pd.read_csv(path)
@@ -93,9 +77,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
     print("\n" + "=" * 60)
     print("TRAINING TUNED XGBOOST MODEL (AGGREGATE DATA)")
     print("=" * 60)
-
-    # --- FEATURE SELECTION ---
-    # Using the aggregate financial features that proved highly predictive
     feature_cols = [
         "POLY_INFORCE_QTY",
         "PREV_POLY_INFORCE_QTY",
@@ -117,8 +98,6 @@ def train_xgboost_tuned(df: pd.DataFrame):
 
 
     os.makedirs("models", exist_ok=True)
-    
-    # Save Feature Order (Critical for API consistency)
     joblib.dump(feature_cols, FEATURE_ORDER_PATH)
     print(f"✓ Saved feature order to {FEATURE_ORDER_PATH}")
 
