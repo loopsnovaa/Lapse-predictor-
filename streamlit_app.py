@@ -252,7 +252,21 @@ def predict_page():
                 for r in reasons: st.write(r)
                 if risk == "High":
                     st.markdown("### Strategy")
-                    for s in strats: st.info(s)
+                    for s in strats: 
+                         st.markdown(f"""
+                         <div style="
+                              background-color: rgba(46, 204, 113, 0.25);
+                              border: 2px solid #2ECC71;
+                              padding: 15px 20px;
+                              border-radius: 12px;
+                              margin-bottom: 10px;
+                              color: white;
+                              font-size: 16px;
+                              font-weight: 500;
+                         ">
+                              {s}
+                        </div>
+                        """, unsafe_allow_html=True)
 
 def performance_page():
     st.sidebar.title("Navigation")
