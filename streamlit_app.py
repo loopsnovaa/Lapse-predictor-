@@ -103,7 +103,7 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
 }
 
 .stButton>button {
-    background-color: #b2f7b1 !important; color: black !important; border-radius: 10px;
+    background-color: ##6EEB83 !important; color: black !important; border-radius: 10px;
     border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
 }
 .stButton>button:hover { background-color: #A0E15E !important; }
