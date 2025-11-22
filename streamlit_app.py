@@ -89,7 +89,7 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # CSS STYLING (FIXED)
 # ---------------------------------------------------------
-CUSTOM_CSS = """
+CUSTOM_CSS = 
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
@@ -102,14 +102,12 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
     color: black !important; background-color: #e6f2ff !important; border-radius: 5px;
 }
 
-/* Buttons */
 .stButton>button {
     background-color: #b2f7b1 !important; color: black !important; border-radius: 10px;
     border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
 }
 .stButton>button:hover { background-color: #A0E15E !important; }
 
-/* Metric Cards (The Boxes) */
 .metric-card {
     background-color: rgba(255, 255, 255, 0.1); 
     padding: 20px; 
@@ -137,7 +135,7 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
     margin: 0;
 }
 </style>
-"""
+
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
