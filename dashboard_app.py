@@ -1,222 +1,254 @@
 import streamlit as st
-import requests
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
+import joblib
+import os
+import json
 
-st.set_page_config(page_title="BankGuard: Insurance Analytics", layout="wide", page_icon="🏦")
+# ---------------------------------------------------------
+# SETUP & MODEL LOADING (Cloud-Native Logic)
+# ---------------------------------------------------------
+st.set_page_config(page_title="ChurnAlyse", layout="wide", page_icon="📉")
 
-# --- CSS STYLING ---
-st.markdown("""
+# Paths
+MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
+SCALER_PATH = "models/scaler_new.joblib"
+FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
+LEADERBOARD_PATH = "models/leaderboard.json"
+
+@st.cache_resource
+def load_model_artifacts():
+    """Load models directly into memory (No API needed)"""
+    try:
+        if not os.path.exists(MODEL_PATH):
+            return None, None, None
+            
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        features = joblib.load(FEATURE_ORDER_PATH)
+        return model, scaler, features
+    except Exception as e:
+        return None, None, None
+
+@st.cache_data
+def load_leaderboard():
+    """Load leaderboard directly from JSON file"""
+    try:
+        if not os.path.exists(LEADERBOARD_PATH):
+            return None
+        with open(LEADERBOARD_PATH, 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+# Load artifacts on startup
+model, scaler, feature_order = load_model_artifacts()
+
+# ---------------------------------------------------------
+# INTERNAL PREDICTION LOGIC
+# ---------------------------------------------------------
+def make_prediction(payload):
+    """Runs XGBoost prediction locally in the dashboard"""
+    if not model or not scaler:
+        return None
+    
+    try:
+        # Convert payload to DataFrame
+        df = pd.DataFrame([payload])
+        
+        # Ensure all training columns exist
+        for col in feature_order:
+            if col not in df.columns:
+                df[col] = 0
+                
+        # Sort and Scale
+        df_sorted = df[feature_order]
+        X_scaled = scaler.transform(df_sorted)
+        
+        # Predict
+        prediction = model.predict(X_scaled)[0]
+        probability = model.predict_proba(X_scaled)[0][1]
+        
+        # Explanation Rule (Retention vs Previous)
+        retention = payload.get('RETENTION_POLY_QTY', 0)
+        prev = payload.get('PREV_POLY_INFORCE_QTY', 0)
+        reason = "Stable metrics"
+        if prediction == 1:
+            reason = f"Retention Qty ({retention}) < Previous Qty ({prev})"
+
+        return {
+            "prediction": "LAPSE" if prediction == 1 else "RETAIN",
+            "confidence_score": probability,
+            "primary_driver": reason
+        }
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
+        return None
+
+# ---------------------------------------------------------
+# CSS STYLING
+# ---------------------------------------------------------
+CUSTOM_CSS = """
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-    .metric-card {
-        background-color: white; padding: 20px; border-radius: 12px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border: 1px solid #e9ecef;
-    }
-    .model-header {
-        background-color: #f0f2f6; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid #0d6efd;
-    }
-    .risk-high { border-top: 5px solid #dc3545; }
-    .risk-low { border-top: 5px solid #198754; }
-    
-    .stButton>button {
-        width: 100%; border-radius: 8px; height: 3em; 
-        background-color: #0d6efd; color: white; font-weight: 600;
-        border: none;
-    }
-    .stButton>button:hover { background-color: #0b5ed7; }
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
+[data-testid="stAppViewContainer"] { background-color: #0d3a66 !important; color: white !important; }
+[data-testid="stSidebar"] { background-color: #0f4c81 !important; }
+h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
+.stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
+    color: black !important; background-color: #e6f2ff !important; border-radius: 5px;
+}
+.stButton>button {
+    background-color: #b2f7b1 !important; color: black !important; border-radius: 10px;
+    border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
+}
+.stButton>button:hover { background-color: #A0E15E !important; }
+.metric-card {
+    background-color: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 12px; 
+    border: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px;
+}
 </style>
-""", unsafe_allow_html=True)
-
-API_URL = "http://127.0.0.1:5000"
-
-def get_prediction(payload):
-    try:
-        response = requests.post(f"{API_URL}/predict", json=payload, timeout=5)
-        response.raise_for_status()
-        return response.json()
-    except: return None
-
-def get_leaderboard():
-    """Fetches the multi-model comparison data"""
-    try:
-        response = requests.get(f"{API_URL}/leaderboard", timeout=2)
-        if response.status_code == 200:
-            return response.json()
-    except: return None
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# LOCAL LOGIC: CUSTOMER SCORING (MICRO)
+# HELPER FUNCTIONS
 # ---------------------------------------------------------
-def calculate_customer_priority(data):
-    score = 0
+def explain_channels(data):
+    ch1, ch2, ch3 = data.get("channel1", 0), data.get("channel2", 0), data.get("channel3", 0)
+    explanation = []
+    if ch1 == 0 and ch2 == 0 and ch3 == 0: explanation.append("Low-engagement channel (walk-in/telemarketing).")
+    if ch1 >= 1: explanation.append("Acquired through advisor/agent (strong follow-up).")
+    if ch2 >= 1: explanation.append("Acquired through digital channel (medium risk).")
+    if ch3 >= 1: explanation.append("Bancassurance channel (moderate stability).")
+    return explanation if explanation else ["Mixed channel combination."]
+
+def explain_risk_factors(data, risk_level):
     reasons = []
-
-    if data['premium'] > 4000:
-        score += 2
-        reasons.append(f"High Value Customer (${data['premium']}/yr)")
-
-    if data['tenure'] < 1.5:
-        score += 3
-        reasons.append("New Customer (< 1.5 yrs)")
+    if data.get("RETENTION_POLY_QTY", 0) < data.get("PREV_POLY_INFORCE_QTY", 0):
+        reasons.append("⚠️ Portfolio Shrinkage detected (Retention < Previous).")
+    if data.get("LOSS_RATIO", 0) > 1.0:
+        reasons.append("⚠️ Critical Loss Ratio (>100%).")
+    if data.get("premium_amount", 0) > 3000:
+        reasons.append("💰 High Premium (>3000).")
+    if data.get("policy_tenure_years", 0) < 2:
+        reasons.append("⏳ Short tenure (< 2 years).")
     
-    if data['substandard']:
-        score += 4
-        reasons.append("Substandard Risk Flag")
+    strategies = ["Offer premium reminders", "Personalized agent follow-up", "Explain long-term benefits"]
+    return reasons, strategies
 
-    if score >= 5:
-        return "High Priority", "#dc3545", reasons
-    elif score >= 3:
-        return "Medium Priority", "#ffc107", reasons
+# ---------------------------------------------------------
+# NAVIGATION
+# ---------------------------------------------------------
+if "page" not in st.session_state: st.session_state.page = "home"
+def go_to(p): st.session_state.page = p
+
+def home_page():
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.title("ChurnAlyse")
+    st.subheader("Cloud-Native Insurance Analytics")
+    
+    if model:
+        st.success("🟢 AI Engine Loaded (Embedded)")
     else:
-        return "Standard", "#198754", ["Profile is stable"]
+        st.error("🔴 Model Files Missing. Please check 'models/' folder.")
 
-# --- PREDICT PAGE ---
+    if st.button("Start Now"): go_to("predict")
+
 def predict_page():
-    st.title("🏦 BankGuard: Lapse Intervention Tool")
-    
-    # Check Connection
-    if get_leaderboard():
-        st.success("🟢 API Online: Connected to High-Accuracy Model Hub")
-    else:
-        st.error("🔴 API Offline: Run 'api.py' to enable AI features")
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_pred", on_change=lambda: go_to(st.session_state.nav_pred.lower()))
+    st.title("Predict Policy Lapse Risk")
 
-    col_input, col_result = st.columns([1, 1.2])
-
-    with col_input:
-        with st.form("risk_form"):
-            st.subheader("1. Enter Data")
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        with st.form("main_form"):
+            st.markdown("### 1. Customer")
+            age = st.number_input("Age", 18, 99, 30)
+            prem = st.number_input("Premium", 1, 100000, 3500)
+            ten = st.number_input("Tenure (Yrs)", 0.0, 50.0, 1.5)
+            ch1 = st.number_input("Agent Channel", 0, 1, 0)
+            ch2 = st.number_input("Digital Channel", 0, 1, 1)
+            ch3 = st.number_input("Bancassurance", 0, 1, 0)
             
-            tab1, tab2 = st.tabs(["👤 Customer (Micro)", "🏢 Portfolio (Macro)"])
+            st.markdown("### 2. Agency Metrics")
+            ret_qty = st.number_input("Retained Qty", 0, 10000, 90)
+            prev_qty = st.number_input("Prev. Qty", 0, 10000, 100)
+            curr_qty = st.number_input("Curr. Qty", 0, 10000, 90)
+            loss_r = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
+            loss_3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
+            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
             
-            with tab1:
-                st.caption("Individual Risk Factors")
-                cust_id = st.text_input("Customer ID", "CUS-9921")
-                premium = st.number_input("Annual Premium ($)", 0, 100000, 2500)
-                tenure = st.number_input("Tenure (Years)", 0.0, 50.0, 1.2)
-                substandard = st.checkbox("Substandard Risk Flag")
-            
-            with tab2:
-                st.caption("Aggregated Agency Metrics (Sent to AI)")
-                retention_qty = st.number_input("Retained Policy Qty", 0, 10000, 90)
-                prev_inforce = st.number_input("Prev. In-Force Qty", 0, 10000, 100)
-                curr_inforce = st.number_input("Curr. In-Force Qty", 0, 10000, 90)
-                loss_ratio = st.number_input("Current Loss Ratio (%)", 0.0, 500.0, 65.0)
-                loss_3yr = st.number_input("3-Year Loss Ratio (%)", 0.0, 500.0, 60.0)
-                growth = st.number_input("Growth Rate (%)", -100.0, 100.0, 2.5)
-            
-            st.markdown("---")
-            submit = st.form_submit_button("Analyze Risk Profile")
+            submit = st.form_submit_button("Predict")
 
     if submit:
-        payload = {
-            "RETENTION_POLY_QTY": retention_qty, "PREV_POLY_INFORCE_QTY": prev_inforce,
-            "POLY_INFORCE_QTY": curr_inforce, "LOSS_RATIO": loss_ratio,
-            "LOSS_RATIO_3YR": loss_3yr, "GROWTH_RATE_3YR": growth
+        # Macro Data
+        api_payload = {
+            "RETENTION_POLY_QTY": ret_qty, "PREV_POLY_INFORCE_QTY": prev_qty,
+            "POLY_INFORCE_QTY": curr_qty, "LOSS_RATIO": loss_r,
+            "LOSS_RATIO_3YR": loss_3, "GROWTH_RATE_3YR": growth
         }
-        api_res = get_prediction(payload)
+        # Micro Data
+        full_data = {**api_payload, "premium_amount": prem, "policy_tenure_years": ten, 
+                     "channel1": ch1, "channel2": ch2, "channel3": ch3}
         
-        # Local Customer Logic
-        cust_data = {"premium": premium, "tenure": tenure, "substandard": substandard}
-        cust_prio, cust_color, cust_reasons = calculate_customer_priority(cust_data)
+        # Internal Prediction Call (No API)
+        res = make_prediction(api_payload)
         
-        with col_result:
-            if api_res and "results" in api_res:
-                res = api_res["results"][0]
-                # Determine Colors based on AI Result
-                if res["prediction"] == "LAPSE":
-                    macro_color = "#dc3545" # Red
-                    risk_class = "risk-high"
-                    icon = "⚠️"
-                else:
-                    macro_color = "#198754" # Green
-                    risk_class = "risk-low"
-                    icon = "✅"
+        with col2:
+            if res:
+                prob = res['confidence_score']
+                risk = "High" if res['prediction'] == "LAPSE" else "Low"
+                color = "#d00000" if risk == "High" else "#A0E15E"
                 
-                # --- MACRO CARD ---
                 st.markdown(f"""
-                <div class="metric-card {risk_class}">
-                    <h4 style="color: #6c757d;">AI Portfolio Prediction</h4>
-                    <h1 style="font-size: 50px; color: {macro_color}; margin: 0;">{icon} {res['prediction']}</h1>
-                    <h3 style="color: {macro_color};">Confidence: {res['confidence_score']*100:.1f}%</h3>
-                    <hr>
-                    <p style="text-align: left;"><b>Primary Driver:</b><br>{res['primary_driver']}</p>
+                <div class="metric-card" style="border-left: 5px solid {color};">
+                    <h3>Risk Level: <span style="color:{color}">{risk}</span></h3>
+                    <h1>{prob*100:.1f}% <span style="font-size: 20px">Probability</span></h1>
+                    <p>{res['primary_driver']}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                st.write("") # Spacer
+                reasons, strats = explain_risk_factors(full_data, risk)
+                st.markdown("### Analysis")
+                for r in reasons: st.write(r)
+                if risk == "High":
+                    st.markdown("### Strategy")
+                    for s in strats: st.info(s)
 
-                # --- MICRO CARD ---
-                st.markdown(f"""
-                <div class="metric-card" style="border-top: 5px solid {cust_color};">
-                    <h4 style="color: #6c757d;">Customer Intervention Priority</h4>
-                    <h2 style="color: {cust_color}; margin: 0;">{cust_prio}</h2>
-                    <hr>
-                    <div style="text-align: left;">
-                        {''.join([f'<p>• {r}</p>' for r in cust_reasons])}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-# --- PERFORMANCE PAGE (UPDATED) ---
 def performance_page():
-    st.title("📊 Model Performance Diagnostics")
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
+    st.title("Model Performance")
     
-    leaderboard = get_leaderboard()
-    
+    leaderboard = load_leaderboard()
     if not leaderboard:
-        st.warning("⚠️ Metrics unavailable. Ensure `api.py` is running and `train_leaderboard.py` has been executed.")
+        st.warning("⚠️ Leaderboard data not found. Run `train_leaderboard.py` locally and upload 'models/leaderboard.json'.")
         return
 
-    st.markdown("### Comparative Leaderboard")
-    st.info("Metrics calculated on validation set (20% of data).")
-
-    # Define the order we want to show models
-    model_order = ["XGBoost (Tuned)", "Random Forest", "Decision Tree", "Logistic Regression"]
-
-    for model_name in model_order:
-        # Check if model exists in data
-        if model_name in leaderboard:
-            metrics = leaderboard[model_name]
-            
-            # --- MODEL HEADER ---
-            st.markdown(f"""
-            <div class="model-header">
-                <h3 style="margin:0; color: #0d6efd;">{model_name}</h3>
+    # Leaderboard Display
+    model_data = [{"Model": k, "Accuracy": v['accuracy'], "AUC": v['auc']} for k, v in leaderboard.items()]
+    df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
+    
+    cols = st.columns(len(df))
+    for idx, row in df.iterrows():
+        # Using modular logic to safely place metrics in columns
+        col_idx = idx % len(cols)
+        with cols[col_idx]:
+             st.markdown(f"""
+            <div class="metric-card">
+                <h4 style="color: #A0E15E;">{row['Model']}</h4>
+                <h1>{row['Accuracy']*100:.1f}%</h1>
+                <small>AUC: {row['AUC']:.3f}</small>
             </div>
             """, unsafe_allow_html=True)
 
-            # --- METRICS ROW ---
-            m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("Accuracy", f"{metrics['accuracy']*100:.2f}%")
-            m2.metric("Precision", f"{metrics['precision']:.3f}")
-            m3.metric("Recall", f"{metrics['recall']:.3f}")
-            m4.metric("F1 Score", f"{metrics['f1_score']:.3f}")
-            m5.metric("AUC", f"{metrics['auc']:.3f}")
-            
-            st.write("") # Spacer
-
-    # --- Feature Importance Chart (Only for XGBoost) ---
-    st.markdown("---")
-    st.subheader("Feature Importance (XGBoost)")
-    # Hardcoded for visual consistency based on your known feature set
-    features = pd.DataFrame({
-        "Feature": ["RETENTION_POLY_QTY", "PREV_POLY_INFORCE_QTY", "LOSS_RATIO", "GROWTH_RATE_3YR"],
-        "Importance": [0.65, 0.25, 0.08, 0.02] 
-    })
-    
-    fig = go.Figure(go.Bar(
-        x=features["Importance"], y=features["Feature"], orientation='h', marker=dict(color='#0d6efd')
-    ))
-    fig.update_layout(height=300, margin=dict(l=0,r=0,t=0,b=0))
+    st.subheader("Accuracy Comparison")
+    fig = go.Figure(go.Bar(x=df["Model"], y=df["Accuracy"], marker=dict(color=["#A0E15E", "#8ecae6", "#219ebc", "#023047"])))
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), yaxis=dict(range=[0.8, 1.0]))
     st.plotly_chart(fig, use_container_width=True)
 
-# --- NAVIGATION ---
-if __name__ == "__main__":
-    with st.sidebar:
-        st.markdown("### Menu")
-        page = st.radio("Go to:", ["Lapse Prediction", "Model Performance"])
-    
-    if page == "Lapse Prediction":
-        predict_page()
-    else:
-        performance_page()
+if st.session_state.page == "home": home_page()
+elif st.session_state.page == "predict": predict_page()
+else: performance_page()
