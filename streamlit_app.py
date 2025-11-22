@@ -271,7 +271,7 @@ def predict_page():
 def performance_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
-    st.title("🏆 Model Performance Leaderboard")
+    st.title("Model Performance Leaderboard")
     
     leaderboard = load_leaderboard()
     if not leaderboard:
@@ -295,7 +295,7 @@ def performance_page():
 
     # --- RENDER MODEL CARDS (WITH BOXES) ---
     for index, row in df.iterrows():
-        st.markdown(f"### 🤖 {row['Model']}")
+        st.markdown(f"### {row['Model']}")
         
         c1, c2, c3, c4, c5 = st.columns(5)
         
