@@ -104,9 +104,31 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
     border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
 }
 .stButton>button:hover { background-color: #A0E15E !important; }
+
+/* METRIC CARD STYLING - ENSURES EVEN HEIGHT */
 .metric-card {
-    background-color: rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 12px; 
-    border: 1px solid rgba(255,255,255,0.2); margin-bottom: 20px;
+    background-color: rgba(255, 255, 255, 0.1); 
+    padding: 20px; 
+    border-radius: 12px; 
+    border: 1px solid rgba(255,255,255,0.2); 
+    margin-bottom: 10px;
+    min-height: 160px; /* Forces all cards to same height */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.metric-label {
+    font-size: 16px;
+    color: #A0E15E !important;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+.metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: white !important;
+    margin: 0;
 }
 </style>
 """
@@ -203,10 +225,10 @@ def predict_page():
                 color = "#d00000" if risk == "High" else "#A0E15E"
                 
                 st.markdown(f"""
-                <div class="metric-card" style="border-left: 5px solid {color};">
-                    <h3>Risk Level: <span style="color:{color}">{risk}</span></h3>
-                    <h1>{prob*100:.1f}% <span style="font-size: 20px">Probability</span></h1>
-                    <p>{res['primary_driver']}</p>
+                <div class="metric-card" style="border-left: 5px solid {color}; display: block; text-align: left;">
+                    <h3 style="color:white; margin:0;">Risk Level: <span style="color:{color}">{risk}</span></h3>
+                    <h1 style="color:white; margin:10px 0;">{prob*100:.1f}% <span style="font-size: 20px">Probability</span></h1>
+                    <p style="color:#ccc;">{res['primary_driver']}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -239,69 +261,31 @@ def performance_page():
             "AUC": metrics.get('auc', 0)
         })
     
-    # Create DataFrame & Sort
+    # Sort by Accuracy
     df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
 
-    # --- VISUAL METRIC CARDS (TOP MODEL) ---
-    best_model = df.iloc[0]
-    st.subheader(f"Best Performing Model: {best_model['Model']}")
-    
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.markdown(f"<div class='metric-card'><h3>Accuracy</h3><h1>{best_model['Accuracy']:.1%}</h1></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='metric-card'><h3>Precision</h3><h1>{best_model['Precision']:.3f}</h1></div>", unsafe_allow_html=True)
-    c3.markdown(f"<div class='metric-card'><h3>Recall</h3><h1>{best_model['Recall']:.3f}</h1></div>", unsafe_allow_html=True)
-    c4.markdown(f"<div class='metric-card'><h3>F1 Score</h3><h1>{best_model['F1 Score']:.3f}</h1></div>", unsafe_allow_html=True)
-    c5.markdown(f"<div class='metric-card'><h3>AUC</h3><h1>{best_model['AUC']:.3f}</h1></div>", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # --- LEADERBOARD TABLE ---
-    st.subheader("Detailed Model Comparison")
-    
-    # Format for display
-    df_display = df.copy()
-    df_display['Accuracy'] = df_display['Accuracy'].apply(lambda x: f"{x:.2%}")
-    df_display['Precision'] = df_display['Precision'].apply(lambda x: f"{x:.3f}")
-    df_display['Recall'] = df_display['Recall'].apply(lambda x: f"{x:.3f}")
-    df_display['F1 Score'] = df_display['F1 Score'].apply(lambda x: f"{x:.3f}")
-    df_display['AUC'] = df_display['AUC'].apply(lambda x: f"{x:.3f}")
-    
-    st.dataframe(
-        df_display,
-        column_config={
-            "Model": "Model Name",
-            "Accuracy": "Accuracy",
-            "Precision": "Precision",
-            "Recall": "Recall",
-            "F1 Score": "F1-Score",
-            "AUC": "ROC AUC"
-        },
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # --- VISUAL COMPARISON CHART ---
-    st.subheader("Accuracy vs F1-Score")
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=df["Model"], y=df["Accuracy"],
-        name='Accuracy', marker_color='#A0E15E'
-    ))
-    fig.add_trace(go.Bar(
-        x=df["Model"], y=df["F1 Score"],
-        name='F1 Score', marker_color='#219ebc'
-    ))
-    
-    fig.update_layout(
-        barmode='group',
-        plot_bgcolor='rgba(0,0,0,0)', 
-        paper_bgcolor='rgba(0,0,0,0)', 
-        font=dict(color='white'),
-        yaxis=dict(range=[0.8, 1.0]),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # --- RENDER MODEL CARDS ---
+    for index, row in df.iterrows():
+        st.markdown(f"### 🤖 {row['Model']}")
+        
+        c1, c2, c3, c4, c5 = st.columns(5)
+        
+        # Helper for cleaner code
+        def metric_box(label, value):
+            return f"""
+            <div class="metric-card">
+                <div class="metric-label">{label}</div>
+                <div class="metric-value">{value}</div>
+            </div>
+            """
+            
+        c1.markdown(metric_box("Accuracy", f"{row['Accuracy']:.1%}"), unsafe_allow_html=True)
+        c2.markdown(metric_box("Precision", f"{row['Precision']:.3f}"), unsafe_allow_html=True)
+        c3.markdown(metric_box("Recall", f"{row['Recall']:.3f}"), unsafe_allow_html=True)
+        c4.markdown(metric_box("F1 Score", f"{row['F1 Score']:.3f}"), unsafe_allow_html=True)
+        c5.markdown(metric_box("AUC", f"{row['AUC']:.3f}"), unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
 
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
