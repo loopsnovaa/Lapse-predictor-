@@ -173,7 +173,7 @@ def go_to(p): st.session_state.page = p
 def home_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.title("ChurnAlyse")
-    st.subheader("Cloud-Native Insurance Analytics")
+    st.subheader("Predict churn, monitor risk, and save customers proactively.")
     
     if model:
         st.success("🟢 ML Engine Loaded (Embedded)")
