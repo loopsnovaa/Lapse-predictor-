@@ -89,7 +89,7 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # CSS STYLING (FIXED)
 # ---------------------------------------------------------
-CUSTOM_CSS = 
+CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
@@ -135,6 +135,7 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
     margin: 0;
 }
 </style>
+"""
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
