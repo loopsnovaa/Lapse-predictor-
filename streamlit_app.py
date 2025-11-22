@@ -106,7 +106,7 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
     background-color: ##6EEB83 !important; color: black !important; border-radius: 10px;
     border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
 }
-.stButton>button:hover { background-color: #A0E15E !important; }
+.stButton>button:hover { background-color: #27AE60 !important; }
 
 .metric-card {
     background-color: rgba(255, 255, 255, 0.1); 
@@ -229,12 +229,23 @@ def predict_page():
                 color = "#d00000" if risk == "High" else "#A0E15E"
                 
                 st.markdown(f"""
-                <div class="metric-card" style="border-left: 5px solid {color}; display: block; text-align: left;">
-                    <h3 style="color:white; margin:0;">Risk Level: <span style="color:{color}">{risk}</span></h3>
-                    <h1 style="color:white; margin:10px 0;">{prob*100:.1f}% <span style="font-size: 20px">Probability</span></h1>
-                    <p style="color:#ccc;">{res['primary_driver']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                <div style="
+                    background-color: rgba(208, 0, 0, 0.2);
+                    border: 2px solid #d00000;
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin-bottom: 20px;
+                ">
+                <h3 style="color:white; margin:0;">
+                    Risk Level: <span style="color:#ff4d4d">{risk}</span>
+                </h3>
+                <h1 style="color:white; margin:10px 0;">
+                   {prob*100:.1f}% <span style="font-size: 20px">Probability</span>
+                </h1>
+               <p style="color:#ccc;">{res['primary_driver']}</p>
+               </div>
+               """, unsafe_allow_html=True)
+
                 
                 reasons, strats = explain_risk_factors(full_data, risk)
                 st.markdown("### Analysis")
