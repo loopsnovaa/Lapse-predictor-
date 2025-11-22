@@ -87,7 +87,7 @@ def make_prediction(payload):
         return None
 
 # ---------------------------------------------------------
-# CSS STYLING
+# CSS STYLING (FIXED)
 # ---------------------------------------------------------
 CUSTOM_CSS = """
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -96,36 +96,42 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
 [data-testid="stAppViewContainer"] { background-color: #0d3a66 !important; color: white !important; }
 [data-testid="stSidebar"] { background-color: #0f4c81 !important; }
 h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
+
+/* Input Fields */
 .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
     color: black !important; background-color: #e6f2ff !important; border-radius: 5px;
 }
+
+/* Buttons */
 .stButton>button {
     background-color: #b2f7b1 !important; color: black !important; border-radius: 10px;
     border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
 }
 .stButton>button:hover { background-color: #A0E15E !important; }
 
-/* METRIC CARD STYLING - ENSURES EVEN HEIGHT */
+/* Metric Cards (The Boxes) */
 .metric-card {
     background-color: rgba(255, 255, 255, 0.1); 
     padding: 20px; 
     border-radius: 12px; 
     border: 1px solid rgba(255,255,255,0.2); 
     margin-bottom: 10px;
-    min-height: 160px; /* Forces all cards to same height */
+    min-height: 120px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
 }
 .metric-label {
-    font-size: 16px;
+    font-size: 14px;
     color: #A0E15E !important;
     margin-bottom: 5px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 .metric-value {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: 700;
     color: white !important;
     margin: 0;
@@ -264,7 +270,7 @@ def performance_page():
     # Sort by Accuracy
     df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
 
-    # --- RENDER MODEL CARDS ---
+    # --- RENDER MODEL CARDS (WITH BOXES) ---
     for index, row in df.iterrows():
         st.markdown(f"### 🤖 {row['Model']}")
         
