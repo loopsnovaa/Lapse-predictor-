@@ -178,7 +178,7 @@ def home_page():
     st.subheader("Cloud-Native Insurance Analytics")
     
     if model:
-        st.success("🟢 AI Engine Loaded (Embedded)")
+        st.success("🟢 ML Engine Loaded (Embedded)")
     else:
         st.error("🔴 Model Files Missing. Please check 'models/' folder.")
 
@@ -286,10 +286,10 @@ def performance_page():
             """
             
         c1.markdown(metric_box("Accuracy", f"{row['Accuracy']:.1%}"), unsafe_allow_html=True)
-        c2.markdown(metric_box("Precision", f"{row['Precision']:.3f}"), unsafe_allow_html=True)
-        c3.markdown(metric_box("Recall", f"{row['Recall']:.3f}"), unsafe_allow_html=True)
-        c4.markdown(metric_box("F1 Score", f"{row['F1 Score']:.3f}"), unsafe_allow_html=True)
-        c5.markdown(metric_box("AUC", f"{row['AUC']:.3f}"), unsafe_allow_html=True)
+        c2.markdown(metric_box("Precision", f"{row['Precision']:.1f%}"), unsafe_allow_html=True)
+        c3.markdown(metric_box("Recall", f"{row['Recall']:.1f%}"), unsafe_allow_html=True)
+        c4.markdown(metric_box("F1 Score", f"{row['F1 Score']:.1f%}"), unsafe_allow_html=True)
+        c5.markdown(metric_box("AUC", f"{row['AUC']:.1f%}"), unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
 
