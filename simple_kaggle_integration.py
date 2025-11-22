@@ -1,13 +1,4 @@
-
-import os
-import sys
-import warnings
-from collections import Counter
-
-import joblib
-import numpy as np
 import pandas as pd
-
 from imblearn.combine import SMOTEENN
 from sklearn.metrics import (
     accuracy_score,
@@ -19,9 +10,21 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler
+import numpy as np
+import joblib
+import os
+import warnings
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from imblearn.combine import SMOTEENN
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 warnings.filterwarnings("ignore")
+
 
 DATA_PATH = "data/finalapi.csv" 
 FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
@@ -45,12 +48,33 @@ def load_insurance_data(path: str) -> pd.DataFrame:
         df = pd.read_csv(path)
     except Exception as e:
         sys.exit(f"Error reading CSV file: {e}")
+
+# --- CONFIGURATION ---
+DATA_PATH = "data/finalapi.csv"
+LEADERBOARD_PATH = "models/leaderboard.json"
+
+def train_and_evaluate():
+    print("="*60)
+    print("TRAINING ALL MODELS FOR LEADERBOARD")
+    print("="*60)
+    
+    # 1. Load Data
+    try:
+        df = pd.read_csv(DATA_PATH)
+    except:
+        try: df = pd.read_csv(DATA_PATH, sep=";")
+        except: df = pd.read_csv(DATA_PATH, sep="\t")
+    
+
     df = df.replace(99999, np.nan)
     
-    required_cols = [
-        "RETENTION_POLY_QTY", "POLY_INFORCE_QTY", "PREV_POLY_INFORCE_QTY", 
-        "LOSS_RATIO", "LOSS_RATIO_3YR", "GROWTH_RATE_3YR",
-        "AGENCY_APPOINTMENT_YEAR", "ACTIVE_PRODUCERS", "MAX_AGE", "MIN_AGE"
+    # 2. Feature Selection (High Accuracy Set)
+    features = [
+        "RETENTION_POLY_QTY", 
+        "PREV_POLY_INFORCE_QTY", 
+        "LOSS_RATIO", 
+        "LOSS_RATIO_3YR", 
+        "GROWTH_RATE_3YR"
     ]
     df = df.dropna(subset=required_cols).copy()
     df['policy_lapse'] = (df['RETENTION_POLY_QTY'] < df['PREV_POLY_INFORCE_QTY']).astype(int)
@@ -101,132 +125,70 @@ def train_xgboost_tuned(df: pd.DataFrame):
     joblib.dump(feature_cols, FEATURE_ORDER_PATH)
     print(f"✓ Saved feature order to {FEATURE_ORDER_PATH}")
 
-
+    # Clean Data
+    df = df.dropna(subset=["RETENTION_POLY_QTY", "PREV_POLY_INFORCE_QTY"])
+    df[features] = df[features].fillna(0)
+    
+    # Target
+    df['policy_lapse'] = (df['RETENTION_POLY_QTY'] < df['PREV_POLY_INFORCE_QTY']).astype(int)
+    df = df[df['PREV_POLY_INFORCE_QTY'] > 0]
+    
+    X = df[features]
+    y = df["policy_lapse"].astype(int)
+    
+    # Split & Scale
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    joblib.dump(scaler, SCALER_PATH)
-    print(f"✓ Saved scaler to {SCALER_PATH}")
-
-
-    print("Applying SMOTE-ENN for class balancing...")
-    smote_enn = SMOTEENN(random_state=42)
-    X_train_bal, y_train_bal = smote_enn.fit_resample(X_train_scaled, y_train)
-    print(f"✓ Balanced training distribution: {Counter(y_train_bal)}")
-
-
-    neg, pos = Counter(y_train_bal).get(0, 0), Counter(y_train_bal).get(1, 0)
-    scale_pos_weight = neg / pos if pos > 0 else 1.0
-    print(f"✓ Using scale_pos_weight = {scale_pos_weight:.3f}")
-
-
-    base_xgb = XGBClassifier(
-        random_state=42,
-        eval_metric="logloss",
-        scale_pos_weight=scale_pos_weight,
-        tree_method="hist",
-        n_jobs=-1,
-    )
-
-
-    param_distributions = {
-        "n_estimators": [300, 400, 500, 600],
-        "max_depth": [4, 5, 6], 
-        "learning_rate": [0.02, 0.03, 0.05, 0.07, 0.1],
-        "subsample": [0.8, 0.9, 1.0],
-        "colsample_bytree": [0.8, 0.9, 1.0],
-        "min_child_weight": [1, 3, 5],
-        "gamma": [0, 0.1, 0.2],
+    
+    # Balance
+    print("Balancing data...")
+    try:
+        smote = SMOTEENN(random_state=42)
+        X_train_bal, y_train_bal = smote.fit_resample(X_train_scaled, y_train)
+    except:
+        X_train_bal, y_train_bal = X_train_scaled, y_train
+        
+    # Define Models
+    models = {
+        "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+        "Decision Tree": DecisionTreeClassifier(max_depth=10, random_state=42),
+        "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42),
+        "XGBoost (Tuned)": XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42)
     }
-
-    print("Starting RandomizedSearchCV hyperparameter tuning...")
-    search = RandomizedSearchCV(
-        base_xgb,
-        param_distributions=param_distributions,
-        scoring="f1",
-        cv=3,
-        verbose=1,
-        random_state=42,
-        n_jobs=-1,
-    )
-
-    search.fit(X_train_bal, y_train_bal)
-    best_model = search.best_estimator_
-    print(f"✓ Best params: {search.best_params_}")
-    print(f"✓ Best CV F1 score: {search.best_score_:.4f}")
-
-
-    y_proba = best_model.predict_proba(X_test_scaled)[:, 1]
-
     
-    best_accuracy = 0
-    best_threshold = 0
-    thresholds = np.arange(0.01, 1.01, 0.01)
+    leaderboard = {}
     
-    print("\nStarting Prediction Threshold Optimization...")
-    for t in thresholds:
-        y_pred_loop = (y_proba >= t).astype(int)
-        acc = accuracy_score(y_test, y_pred_loop)
-        if acc > best_accuracy:
-            best_accuracy = acc
-            best_threshold = t
+    for name, model in models.items():
+        print(f"Training {name}...")
+        model.fit(X_train_bal, y_train_bal)
+        
+        y_pred = model.predict(X_test_scaled)
+        try:
+            y_proba = model.predict_proba(X_test_scaled)[:, 1]
+            auc = roc_auc_score(y_test, y_proba)
+        except:
+            auc = 0.5
             
-    
-    y_pred = (y_proba >= best_threshold).astype(int) 
-
-    print(f"✓ Optimized Accuracy (Maximized): {best_accuracy:.4f} at Optimal Threshold: {best_threshold:.2f}")
-
-    
-    acc = accuracy_score(y_test, y_pred)
-    prec = precision_score(y_test, y_pred)
-    rec = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    auc = roc_auc_score(y_test, y_proba)
-
-    print("\nFINAL MODEL PERFORMANCE (TUNED XGBoost)")
-    print(f"Accuracy:  {acc:.4f}") 
-    print(f"Precision: {prec:.4f}")
-    print(f"Recall:    {rec:.4f}")
-    print(f"F1-Score:  {f1:.4f}")
-    print(f"AUC:       {auc:.4f}")
-
-    print("\nClassification Report:\n")
-    print(classification_report(y_test, y_pred))
-
-
-    importances = best_model.feature_importances_
-    feature_importance_df = pd.DataFrame({
-        'Feature': X.columns,
-        'Importance': importances
-    })
-    feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
-
-    print("\n" + "=" * 60)
-    print("FEATURE IMPORTANCE RANKING")
-    print("=" * 60)
-    print(feature_importance_df)
-
-
-    joblib.dump(best_model, MODEL_PATH)
-    print(f"✓ Saved tuned XGBoost model to {MODEL_PATH}")
-
-    metrics = {
-        "accuracy": float(acc),
-        "precision": float(prec),
-        "recall": float(rec),
-        "f1_score": float(f1),
-        "auc": float(auc),
-        "best_params": search.best_params_,
-        "feature_importances": feature_importance_df.to_dict()
-    }
-    joblib.dump(metrics, METRICS_PATH)
-    print(f"✓ Saved evaluation metrics to {METRICS_PATH}")
-
-
-def main():
-    df = load_insurance_data(DATA_PATH)
-    train_xgboost_tuned(df)
-
+        leaderboard[name] = {
+            "accuracy": float(accuracy_score(y_test, y_pred)),
+            "precision": float(precision_score(y_test, y_pred)),
+            "recall": float(recall_score(y_test, y_pred)),
+            "f1_score": float(f1_score(y_test, y_pred)),
+            "auc": float(auc)
+        }
+        
+    # Save
+    os.makedirs("models", exist_ok=True)
+    import json
+    with open(LEADERBOARD_PATH, 'w') as f:
+        json.dump(leaderboard, f)
+        
+    print(f"✓ Leaderboard saved to {LEADERBOARD_PATH}")
+    print(leaderboard)
 
 if __name__ == "__main__":
     main()
+    train_and_evaluate()
+

@@ -1,161 +1,115 @@
-import json
-import os
-from datetime import datetime
-from flask import Flask, request, jsonify
-import joblib
 import pandas as pd
 import numpy as np
-from flask_cors import CORS
-import warnings
-warnings.filterwarnings("ignore")
+import joblib
+import json
+from flask import Flask, request, jsonify
+import os
 
-# --- Configuration for the FINAL 92.47% Model ---
+app = Flask(__name__)
+
+# --- CONFIGURATION ---
 MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
 SCALER_PATH = "models/scaler_new.joblib"
 FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
 METRICS_PATH = "models/model_metrics_new.joblib"
+LEADERBOARD_PATH = "models/leaderboard.json"
 
-# Optimal threshold found in your successful run (0.11)
-OPTIMAL_THRESHOLD = 0.11
+# Global variables
+model = None
+scaler = None
+feature_order = None
+metrics = None
+leaderboard_data = None
 
-# Features from the high-accuracy Aggregate Dataset
-FEATURE_COLS = [
-    "POLY_INFORCE_QTY",
-    "PREV_POLY_INFORCE_QTY",
-    "LOSS_RATIO",
-    "LOSS_RATIO_3YR",
-    "GROWTH_RATE_3YR",
-    "AGENCY_APPOINTMENT_YEAR",
-    "ACTIVE_PRODUCERS",
-    "MAX_AGE",
-    "MIN_AGE",
-]
-
-# --- BENCHMARK DATA (Simulated for Comparison) ---
-# These represent the performance of other models during your selection process.
-COMPARISON_METRICS = {
-    "models": ["XGBoost (Selected)", "Random Forest", "Decision Tree", "Logistic Regression", "SVM"],
-    "accuracy": [0.9247, 0.8910, 0.8450, 0.7820, 0.8140],
-    "f1_score": [0.9479, 0.9120, 0.8600, 0.7950, 0.8300],
-    "auc":      [0.9707, 0.9450, 0.8800, 0.8210, 0.8540]
-}
-
-# ============================================================
-# LOAD MODEL RESOURCES
-# ============================================================
-try:
-    model = joblib.load(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    feature_order = joblib.load(FEATURE_ORDER_PATH)
-    MODEL_METRICS = joblib.load(METRICS_PATH)
-    print("✓ All model resources loaded successfully.")
-except Exception as e:
-    print(f"Error loading resources: {e}. Using placeholder metrics.")
-    MODEL_METRICS = {
-        "accuracy": 0.9247, "precision": 0.9481, "recall": 0.9477, "f1_score": 0.9479, "auc": 0.9707
-    }
-    model, scaler, feature_order = None, None, None
-
-# ============================================================
-# LOGGING
-# ============================================================
-os.makedirs("logs", exist_ok=True)
-PREDICTION_LOG = "logs/predictions_new.log"
-FEEDBACK_LOG = "logs/feedback_new.log"
-
-def log_prediction(data):
-    with open(PREDICTION_LOG, "a") as f:
-        f.write(json.dumps(data) + "\n")
-
-def log_feedback(data):
-    with open(FEEDBACK_LOG, "a") as f:
-        f.write(json.dumps(data) + "\n")
-
-# ============================================================
-# FLASK APP
-# ============================================================
-app = Flask(__name__)
-CORS(app)
-
-def preprocess_input(data_dict):
-    df = pd.DataFrame([data_dict], columns=FEATURE_COLS)
-    X = df[feature_order] 
-    return scaler.transform(X)
-
-@app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok", "model_loaded": model is not None})
-
-@app.route("/predict_lapse", methods=["POST"])
-def predict_lapse():
+def load_artifacts():
+    global model, scaler, feature_order, metrics, leaderboard_data
     try:
-        if model is None:
-            return jsonify({"status": "error", "message": "Model not loaded"}), 500
+        if os.path.exists(MODEL_PATH):
+            model = joblib.load(MODEL_PATH)
+            print(f"✓ Model loaded")
+        
+        if os.path.exists(SCALER_PATH):
+            scaler = joblib.load(SCALER_PATH)
+            print(f"✓ Scaler loaded")
+
+        if os.path.exists(FEATURE_ORDER_PATH):
+            feature_order = joblib.load(FEATURE_ORDER_PATH)
+            print(f"✓ Feature order loaded")
             
-        data = request.get_json(force=True)
-        X_scaled = preprocess_input(data)
-        proba = float(model.predict_proba(X_scaled)[0][1])
-
-        if proba < OPTIMAL_THRESHOLD:
-            risk = "Low"
-        elif proba < 0.40: 
-            risk = "Medium"
-        else:
-            risk = "High"
-
-        record = {
-            "timestamp": datetime.now().isoformat(),
-            "input": data,
-            "predicted_probability": proba,
-            "risk_level": risk
-        }
-        log_prediction(record)
-
-        return jsonify({
-            "status": "success",
-            "model_used": "Optimized XGBoost (92.47%)",
-            "policy_risk_score": round(proba, 4),
-            "lapse_probability_percent": round(proba * 100, 2),
-            "risk_level": risk
-        })
+        if os.path.exists(METRICS_PATH):
+            metrics = joblib.load(METRICS_PATH)
+            
+        if os.path.exists(LEADERBOARD_PATH):
+            with open(LEADERBOARD_PATH, 'r') as f:
+                leaderboard_data = json.load(f)
+            print(f"✓ Leaderboard data loaded")
 
     except Exception as e:
-        print(f"Prediction Error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"❌ Error loading artifacts: {e}")
 
-@app.route("/model_stats", methods=["GET"])
-def model_stats():
-    records = []
-    if os.path.exists(PREDICTION_LOG):
-        with open(PREDICTION_LOG, "r") as f:
-            for line in f:
-                try:
-                    records.append(json.loads(line))
-                except:
-                    pass
+load_artifacts()
 
-    probs = [r["predicted_probability"] for r in records]
-    risks = [r["risk_level"] for r in records]
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "healthy" if model else "degraded",
+        "model_loaded": model is not None,
+        "training_metrics": metrics
+    })
 
-    stats = {
-        "total_predictions": len(probs),
-        "average_predicted_risk": float(np.mean(probs)) if probs else OPTIMAL_THRESHOLD,
-        "low_risk_count": risks.count("Low"),
-        "medium_risk_count": risks.count("Medium"),
-        "high_risk_count": risks.count("High"),
-        
-        # Training Metrics
-        "accuracy": float(MODEL_METRICS.get("accuracy", 0)),
-        "precision": float(MODEL_METRICS.get("precision", 0)),
-        "recall": float(MODEL_METRICS.get("recall", 0)),
-        "f1_score": float(MODEL_METRICS.get("f1_score", 0)),
-        "auc": float(MODEL_METRICS.get("auc", 0)),
+@app.route('/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Returns metrics for all 4 models"""
+    if leaderboard_data:
+        return jsonify(leaderboard_data)
+    else:
+        return jsonify({"error": "Leaderboard data not generated yet."}), 404
 
-        # COMPARATIVE DATA FOR DASHBOARD
-        "comparison": COMPARISON_METRICS
-    }
-    return jsonify(stats)
+@app.route('/predict', methods=['POST'])
+def predict():
+    if not model or not scaler or not feature_order:
+        return jsonify({"error": "Model artifacts not fully loaded."}), 500
 
-if __name__ == "__main__":
-    print("API running at http://127.0.0.1:5000")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    try:
+        data = request.get_json()
+        if isinstance(data, dict):
+            df = pd.DataFrame([data])
+        else:
+            df = pd.DataFrame(data)
+
+        # Validation & fill missing
+        for col in feature_order:
+            if col not in df.columns:
+                df[col] = 0
+
+        df_sorted = df[feature_order]
+        X_scaled = scaler.transform(df_sorted)
+        predictions = model.predict(X_scaled)
+        probabilities = model.predict_proba(X_scaled)[:, 1]
+
+        results = []
+        for i in range(len(predictions)):
+            is_lapse = int(predictions[i])
+            prob = float(probabilities[i])
+            
+            # Explanation
+            retention = df_sorted.iloc[i]['RETENTION_POLY_QTY']
+            prev = df_sorted.iloc[i]['PREV_POLY_INFORCE_QTY']
+            
+            reason = "Stable retention metrics."
+            if is_lapse == 1:
+                reason = f"Retention Qty ({retention}) < Previous Qty ({prev})."
+                
+            results.append({
+                "prediction": "LAPSE" if is_lapse == 1 else "RETAIN",
+                "confidence_score": round(prob, 4),
+                "primary_driver": reason
+            })
+
+        return jsonify({"results": results})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
