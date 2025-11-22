@@ -220,33 +220,87 @@ def predict_page():
 def performance_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
-    st.title("Model Performance")
+    st.title("🏆 Model Performance Leaderboard")
     
     leaderboard = load_leaderboard()
     if not leaderboard:
         st.warning("⚠️ Leaderboard data not found. Run `train_leaderboard.py` locally and upload 'models/leaderboard.json'.")
         return
 
-    # Leaderboard Display
-    model_data = [{"Model": k, "Accuracy": v['accuracy'], "AUC": v['auc']} for k, v in leaderboard.items()]
-    df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
+    # --- PREPARE DATA ---
+    model_data = []
+    for name, metrics in leaderboard.items():
+        model_data.append({
+            "Model": name,
+            "Accuracy": metrics.get('accuracy', 0),
+            "Precision": metrics.get('precision', 0),
+            "Recall": metrics.get('recall', 0),
+            "F1 Score": metrics.get('f1_score', 0),
+            "AUC": metrics.get('auc', 0)
+        })
     
-    cols = st.columns(len(df))
-    for idx, row in df.iterrows():
-        # Using modular logic to safely place metrics in columns
-        col_idx = idx % len(cols)
-        with cols[col_idx]:
-             st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="color: #A0E15E;">{row['Model']}</h4>
-                <h1>{row['Accuracy']*100:.1f}%</h1>
-                <small>AUC: {row['AUC']:.3f}</small>
-            </div>
-            """, unsafe_allow_html=True)
+    # Create DataFrame & Sort
+    df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
 
-    st.subheader("Accuracy Comparison")
-    fig = go.Figure(go.Bar(x=df["Model"], y=df["Accuracy"], marker=dict(color=["#A0E15E", "#8ecae6", "#219ebc", "#023047"])))
-    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), yaxis=dict(range=[0.8, 1.0]))
+    # --- VISUAL METRIC CARDS (TOP MODEL) ---
+    best_model = df.iloc[0]
+    st.subheader(f"Best Performing Model: {best_model['Model']}")
+    
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.markdown(f"<div class='metric-card'><h3>Accuracy</h3><h1>{best_model['Accuracy']:.1%}</h1></div>", unsafe_allow_html=True)
+    c2.markdown(f"<div class='metric-card'><h3>Precision</h3><h1>{best_model['Precision']:.3f}</h1></div>", unsafe_allow_html=True)
+    c3.markdown(f"<div class='metric-card'><h3>Recall</h3><h1>{best_model['Recall']:.3f}</h1></div>", unsafe_allow_html=True)
+    c4.markdown(f"<div class='metric-card'><h3>F1 Score</h3><h1>{best_model['F1 Score']:.3f}</h1></div>", unsafe_allow_html=True)
+    c5.markdown(f"<div class='metric-card'><h3>AUC</h3><h1>{best_model['AUC']:.3f}</h1></div>", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # --- LEADERBOARD TABLE ---
+    st.subheader("Detailed Model Comparison")
+    
+    # Format for display
+    df_display = df.copy()
+    df_display['Accuracy'] = df_display['Accuracy'].apply(lambda x: f"{x:.2%}")
+    df_display['Precision'] = df_display['Precision'].apply(lambda x: f"{x:.3f}")
+    df_display['Recall'] = df_display['Recall'].apply(lambda x: f"{x:.3f}")
+    df_display['F1 Score'] = df_display['F1 Score'].apply(lambda x: f"{x:.3f}")
+    df_display['AUC'] = df_display['AUC'].apply(lambda x: f"{x:.3f}")
+    
+    st.dataframe(
+        df_display,
+        column_config={
+            "Model": "Model Name",
+            "Accuracy": "Accuracy",
+            "Precision": "Precision",
+            "Recall": "Recall",
+            "F1 Score": "F1-Score",
+            "AUC": "ROC AUC"
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- VISUAL COMPARISON CHART ---
+    st.subheader("Accuracy vs F1-Score")
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df["Model"], y=df["Accuracy"],
+        name='Accuracy', marker_color='#A0E15E'
+    ))
+    fig.add_trace(go.Bar(
+        x=df["Model"], y=df["F1 Score"],
+        name='F1 Score', marker_color='#219ebc'
+    ))
+    
+    fig.update_layout(
+        barmode='group',
+        plot_bgcolor='rgba(0,0,0,0)', 
+        paper_bgcolor='rgba(0,0,0,0)', 
+        font=dict(color='white'),
+        yaxis=dict(range=[0.8, 1.0]),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 if st.session_state.page == "home": home_page()
