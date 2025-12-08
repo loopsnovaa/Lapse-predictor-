@@ -187,9 +187,31 @@ def load_model_artifacts():
         return model, scaler, feature_order
         
     except Exception as e:
-        st.error(f"Failed to load artifacts: {e}")
-        return None, None, None
-
+        st.warning(f"⚠️ Artifact mismatch detected ({e}). Retraining model on server...")
+        
+        # Import and run training pipeline dynamically
+        from integrate_kaggle_dataset import run_prediction_pipeline
+        
+        # Run pipeline (assumes Kaggle.csv is in data/)
+        # We use a smaller sample to make it fast for the demo
+        if os.path.exists("data/Kaggle.csv"):
+            run_prediction_pipeline("data/Kaggle.csv")
+            
+            # Try loading again
+            model = joblib.load(MODEL_PATH)
+            preprocessor_data = joblib.load(PREPROCESSOR_PATH)
+            
+            if isinstance(preprocessor_data, dict):
+                scaler = preprocessor_data.get('scaler')
+                feature_order = preprocessor_data.get('feature_names', [])
+            else:
+                scaler = preprocessor_data.scaler
+                feature_order = preprocessor_data.feature_names
+            
+            return model, scaler, feature_order
+        else:
+            st.error("Cannot retrain: 'data/Kaggle.csv' not found on server.")
+            return None, None, None
 model, scaler, feature_order = load_model_artifacts()
 
 # ---------------------------------------------------------
