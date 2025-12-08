@@ -88,6 +88,15 @@ def get_leaderboard():
             return json.load(f)
     except: 
         return None
+@st.cache_data
+def get_leaderboard():
+    if not os.path.exists(LEADERBOARD_PATH): return None
+    try:
+        with open(LEADERBOARD_PATH, 'r') as f: return json.load(f)
+    except: return None
+
+# ADD THIS LINE BACK:
+model, scaler, feature_order = load_artifacts()
 # ---------------------------------------------------------
 # 4. PREDICTION LOGIC
 # ---------------------------------------------------------
