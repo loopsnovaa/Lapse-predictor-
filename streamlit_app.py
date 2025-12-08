@@ -236,21 +236,39 @@ def performance_page():
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
-def main():
-    with st.sidebar:
-        st.title("Navigation")
-        page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main')
-        st.markdown("---")
-        if model:
-            st.caption(f"🟢 Model Loaded")
-        else:
-            st.caption("🔴 No Model Found")
 
-    if page == "Home":
-        home_page()
-    elif page == "Predict":
-        predict_page()
+def main():
+    
+    # 1. Determine if the sidebar should be shown (Show only on Predict/Performance pages)
+    show_sidebar = st.session_state.page not in ("home", "Home")
+
+    if show_sidebar:
+        with st.sidebar:
+            st.title("Navigation")
+            # Navigation link back to home added
+            page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main')
+            st.markdown("---")
+            if model:
+                st.caption(f"🟢 Model Loaded")
+            else:
+                st.caption("🔴 No Model Found")
+            
+            # Update page state based on sidebar selection
+            if page != st.session_state.page:
+                st.session_state.page = page.lower()
+                st.rerun()
     else:
+        # For the homepage, we still need a hidden sidebar definition to prevent conflicts
+        # This also ensures the main content block has enough space
+        st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
+        
+
+    # 2. Render the current page
+    if st.session_state.page in ("home", "Home"):
+        home_page()
+    elif st.session_state.page == "predict":
+        predict_page()
+    else: # performance
         performance_page()
 
 if __name__ == "__main__":
