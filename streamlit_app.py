@@ -152,7 +152,6 @@ def go_to(p):
 
 
 def home_page():
-    def home_page():
     # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
