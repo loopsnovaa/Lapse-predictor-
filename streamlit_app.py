@@ -230,46 +230,52 @@ def predict_page():
                 fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
                 st.plotly_chart(fig, use_container_width=True)
 
-
 def performance_page():
-    st.title("Comparative Analysis")
+    st.title("🏆 Model Performance Leaderboard")
     
     # Load the JSON data
     data = get_leaderboard()
     
     if not data:
-        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully.")
+        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully to generate models/leaderboard.json.")
         return
 
-    # Convert dictionary data to a Pandas DataFrame for display
-    df = pd.DataFrame.from_dict(data, orient='index')
-    
-    # Clean up column names and sort
-    df.index.name = 'Model'
-    df.reset_index(inplace=True)
-    
-    # Ensure all 5 metrics are rounded and displayed
-    df = df.round(4)
+    st.markdown("---")
 
-    st.markdown("### Top Performing Model")
+    # Iterate through all models in the JSON data
+    # This loop will display the 5 metrics for every model present in the file (assumed to be 5)
     
-    # Check if there's enough data for sorting
-    if not df.empty and 'accuracy' in df.columns:
-        df = df.sort_values(by="accuracy", ascending=False)
-        best_model = df.iloc[0]
+    for model_name, metrics in data.items():
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Best Model", best_model['Model'])
-        c2.metric("Top Accuracy", f"{best_model['accuracy']:.2%}")
-        c3.metric("Top F1 Score", f"{best_model['f1_score']:.4f}")
-    
-    st.markdown("### Full Model Comparison (All 5 Metrics for All Models)")
-    
-    # Display the full table
-    st.dataframe(
-        df.style.highlight_max(axis=0, color='#2ecc71', subset=['accuracy', 'f1_score', 'auc']),
-        use_container_width=True
-    )
+        # Display Model Name
+        st.markdown(f"### {model_name}")
+        
+        # Create 5 columns for the 5 metrics
+        cols = st.columns(5)
+        
+        # Define the 5 metrics and their keys in the JSON
+        metric_keys = ["accuracy", "precision", "recall", "f1_score", "auc"]
+        
+        for i, key in enumerate(metric_keys):
+            # Fetch the value, defaulting to 0 if missing (should not happen if train_full.py ran)
+            value = metrics.get(key, 0.0)
+            
+            # Format value for display
+            if key == "accuracy":
+                display_value = f"{value:.2%}"
+            else:
+                display_value = f"{value:.3f}"
+            
+            # Use custom markdown/metric to display card style
+            with cols[i]:
+                st.markdown(f"""
+                <div class="metric-card" style="text-align: center; padding: 10px;">
+                    <p style="margin:0; font-size: 14px; color: #aaa">{key.upper().replace('_', ' ')}</p>
+                    <h4 style="margin: 5px 0; font-size: 1.5rem; color: #2ecc71;">{display_value}</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+        st.markdown("---") # Separator between models
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
