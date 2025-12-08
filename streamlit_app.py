@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Constants (Using the proven file paths)
+# Constants (Pointing to the successfully trained model)
 MODEL_DIR = "models"
 MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
@@ -25,7 +25,7 @@ FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 2. CUSTOM CSS & ANIMATION (Restored Exactly)
+# 2. CUSTOM CSS & ANIMATION
 # ---------------------------------------------------------
 st.markdown("""
 <style>
@@ -121,7 +121,6 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # 5. PAGES
 # ---------------------------------------------------------
-# Set default page to 'home'
 if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
 
@@ -206,11 +205,24 @@ def predict_page():
                 st.markdown("### Analysis")
                 if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
                 if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
+                st.markdown("### Strategy")
+                st.info("Offer personalized agent follow-up and premium reminders.")
+                
+                # Radar Chart
+                categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
+                ret_gap = max(0, (prev - ret) / prev) if prev > 0 else 0
+                loss_norm = min(1, loss / 100.0)
+                growth_inv = min(1, max(0, (10 - growth)/20))
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatterpolar(r=[ret_gap, loss_norm, growth_inv], theta=categories, fill='toself', name='Current Policy', line_color=color))
+                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
+                st.plotly_chart(fig, use_container_width=True)
 
 
 def performance_page():
     st.title("🏆 Model Leaderboard")
-    st.info("Leaderboard display logic here. Run training script for data.")
+    st.warning("Leaderboard data display here.")
 
 
 # ---------------------------------------------------------
@@ -219,7 +231,6 @@ def performance_page():
 def main():
     with st.sidebar:
         st.title("Navigation")
-        # Navigation link back to home added
         page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main')
         st.markdown("---")
         if model:
