@@ -17,21 +17,21 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. PATHS (Pointing to NEW Kaggle Models)
+# 2. PATHS & SETUP
 # ---------------------------------------------------------
+# Absolute paths to find your files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, 'src'))
 
-# CRITICAL: Point to the correct files
 MODEL_PATH = os.path.join(BASE_DIR, "models", "kaggle_ensemble_model.joblib")
 PREPROCESSOR_PATH = os.path.join(BASE_DIR, "models", "kaggle_preprocessor.joblib")
 
 # ---------------------------------------------------------
-# 3. CSS & ANIMATION (Green Theme & Floating Circles)
+# 3. CSS (GREEN STYLE & FLOATING CIRCLES)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* APP BACKGROUND */
+    /* 1. APP BACKGROUND - Dark Blue Gradient */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
         color: white;
@@ -43,10 +43,9 @@ st.markdown("""
         border-right: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* FLOATING CIRCLES */
+    /* 2. FLOATING CIRCLES */
     .circles {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         overflow: hidden; z-index: 0; pointer-events: none;
     }
     .circles li {
@@ -65,7 +64,7 @@ st.markdown("""
         100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
     }
 
-    /* UI ELEMENTS */
+    /* 3. UI ELEMENTS */
     .block-container { z-index: 10; position: relative; }
     
     .stButton>button {
@@ -88,7 +87,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# INJECT ANIMATION HTML
 st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li></ul>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
@@ -97,7 +95,6 @@ st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><l
 @st.cache_resource
 def load_artifacts():
     try:
-        # Import class definition so joblib doesn't crash
         from models.ensemble import ChurnEnsembleModel
     except ImportError:
         pass
@@ -109,7 +106,6 @@ def load_artifacts():
         model = joblib.load(MODEL_PATH)
         preprocessor_data = joblib.load(PREPROCESSOR_PATH)
         
-        # Handle dict vs object format
         if isinstance(preprocessor_data, dict):
             scaler = preprocessor_data.get('scaler')
             feature_order = preprocessor_data.get('feature_names', [])
@@ -124,24 +120,24 @@ def load_artifacts():
 model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
-# 5. LOGIC (FIXES SHAPE MISMATCH)
+# 5. LOGIC (FIX FOR SHAPE MISMATCH)
 # ---------------------------------------------------------
 def make_prediction(payload):
     if isinstance(feature_order, str) or model is None: 
         return None
         
     try:
-        # 1. Create Input DataFrame
+        # 1. Convert payload to DataFrame
         df = pd.DataFrame([payload])
         
-        # 2. ALIGN FEATURES (The Fix)
-        # Create a dataframe with EXACTLY the columns the model expects
+        # 2. FORCE ALIGNMENT: Create DataFrame with EXACT training columns
+        # This guarantees 6 columns if model expects 6, filling 0 for missing ones
         final_df = pd.DataFrame()
         for col in feature_order:
             if col in df.columns:
                 final_df[col] = df[col]
             else:
-                final_df[col] = 0.0 # Fill missing with 0
+                final_df[col] = 0.0 # Critical fix for mismatch
         
         # 3. Scale & Predict
         X_scaled = scaler.transform(final_df)
@@ -151,7 +147,7 @@ def make_prediction(payload):
         except: prob = 1.0 if pred == 1 else 0.0
         
         reason = "Stable metrics"
-        if prob > 0.5: reason = "High Lapse Probability"
+        if prob > 0.5: reason = "High Risk Factors Detected"
             
         return {"risk": "High" if pred==1 else "Low", "score": prob, "driver": reason}
     except Exception as e:
@@ -172,7 +168,6 @@ def home_page():
     st.markdown("<br>", unsafe_allow_html=True)
     
     if model:
-        # Green Pill
         st.markdown(f"""
         <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block;">
             <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded ({len(feature_order)} features)</span>
@@ -205,11 +200,20 @@ def predict_page():
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        # Payload matching Kaggle features
+        # Calculate ALL possible derived features to prevent mismatch
+        # Based on your preprocessing script logic
         payload = {
-            "policy_amount": p_amt, "premium_amount": prem,
-            "policy_tenure_months": tenure, "credit_score": credit, "age": age,
-            "income": p_amt * 0.1, "premium_to_tenure_ratio": prem / (tenure + 1)
+            "policy_amount": p_amt, 
+            "premium_amount": prem,
+            "policy_tenure_months": tenure, 
+            "credit_score": credit, 
+            "age": age,
+            # Derived Features
+            "income": p_amt * 0.1, 
+            "premium_to_tenure_ratio": prem / (tenure + 1),
+            "premium_to_coverage_ratio": prem / (p_amt + 1),
+            "age_at_policy_start": age - (tenure/12),
+            "claims_per_year": 0 # Default since we don't ask user
         }
         
         res = make_prediction(payload)
@@ -225,7 +229,6 @@ def predict_page():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Radar Chart
                 categories = ['Premium Risk', 'Tenure Risk', 'Credit Risk']
                 vals = [min(1, prem/5000), max(0, 1-(tenure/60)), max(0, 1-(credit/850))]
                 fig = go.Figure(go.Scatterpolar(r=vals, theta=categories, fill='toself', line_color=color))
