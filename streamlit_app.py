@@ -122,9 +122,14 @@ def make_prediction(payload):
 # 5. PAGES
 # ---------------------------------------------------------
 if "page" not in st.session_state: st.session_state.page = "home"
-def go_to(p): st.session_state.page = p
+# --- Replacement for go_to and home_page ---
 
+# 1. New Navigation Function
+def go_to(p):
+    st.session_state.page = p
+    st.experimental_rerun() # Forces immediate page switch
 
+# 2. Updated Home Page Function
 def home_page():
     # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
@@ -147,9 +152,12 @@ def home_page():
     st.markdown("<br>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     with col5:
+        # BUTTON FIX: Calls the new go_to function
         if st.button("Start Risk Analysis", use_container_width=True): go_to("predict")
 
 
+    
+# --- The rest of the script is unchanged ---
 def predict_page():
     st.title("🔮 Lapse Risk Predictor")
 
