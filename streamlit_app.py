@@ -18,21 +18,18 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. PATHS & SETUP (FIXED WITH ABSOLUTE PATHS)
+# 2. PATHS & SETUP (Updated to match your Kaggle Pipeline)
 # ---------------------------------------------------------
-# Get the absolute path of the current folder
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Add src to path so we can load the custom model class
+sys.path.append('src')
 
-# Add 'src' to python path so we can load the custom model class
-sys.path.append(os.path.join(BASE_DIR, 'src'))
-
-# Define Absolute Paths to Artifacts
-MODEL_PATH = os.path.join(BASE_DIR, "models", "kaggle_ensemble_model.joblib")
-PREPROCESSOR_PATH = os.path.join(BASE_DIR, "models", "kaggle_preprocessor.joblib")
-LEADERBOARD_PATH = os.path.join(BASE_DIR, "models", "leaderboard.json")
+# POINT TO THE NEW MODELS YOU JUST TRAINED
+MODEL_PATH = "models/kaggle_ensemble_model.joblib"
+PREPROCESSOR_PATH = "models/kaggle_preprocessor.joblib"
+LEADERBOARD_PATH = "models/leaderboard.json"
 
 # ---------------------------------------------------------
-# 3. CSS & ANIMATION (Green Floating Circles)
+# 3. CSS & ANIMATION (EXACTLY AS REQUESTED)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
@@ -48,7 +45,7 @@ st.markdown("""
         border-right: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* 2. FLOATING CIRCLES ANIMATION */
+    /* 2. FLOATING CIRCLES ANIMATION (The "Bokeh" Effect) */
     .circles {
         position: fixed;
         top: 0;
@@ -56,8 +53,8 @@ st.markdown("""
         width: 100%;
         height: 100%;
         overflow: hidden;
-        z-index: 0;
-        pointer-events: none;
+        z-index: 0; /* Puts it behind everything */
+        pointer-events: none; /* Allows clicking through */
     }
 
     .circles li {
@@ -72,6 +69,7 @@ st.markdown("""
         border-radius: 50%;
     }
 
+    /* RANDOMIZE POSITIONS & SIZES */
     .circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
     .circles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
     .circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
@@ -151,7 +149,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. INJECT HTML FOR ANIMATION
+# 4. INJECT HTML FOR ANIMATION (Crucial for circles to appear)
 # ---------------------------------------------------------
 st.markdown("""
     <ul class="circles">
@@ -161,32 +159,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. DATA LOADING (Updated Logic)
+# 5. DATA LOADING (Robust)
 # ---------------------------------------------------------
 @st.cache_resource
-def load_artifacts():
+def load_model_artifacts():
     try:
-        # 1. Force import the class so joblib can find it
+        # Force import the class so joblib can find it
         try:
             from models.ensemble import ChurnEnsembleModel
         except ImportError:
-            pass # Try loading anyway
+            pass # It might be pickled with the object
 
-        # 2. Check files
         if not os.path.exists(MODEL_PATH) or not os.path.exists(PREPROCESSOR_PATH):
-            print(f"DEBUG: Missing files at {MODEL_PATH} or {PREPROCESSOR_PATH}")
             return None, None, None
             
-        # 3. Load
         model = joblib.load(MODEL_PATH)
         preprocessor_data = joblib.load(PREPROCESSOR_PATH)
         
-        # Handle Preprocessor (might be object or dict)
+        # Handle Preprocessor format
         if isinstance(preprocessor_data, dict):
             scaler = preprocessor_data.get('scaler')
             feature_order = preprocessor_data.get('feature_names', [])
         else:
-            # It's the object itself
             scaler = preprocessor_data.scaler
             feature_order = preprocessor_data.feature_names
         
@@ -196,7 +190,7 @@ def load_artifacts():
         st.error(f"Failed to load artifacts: {e}")
         return None, None, None
 
-model, scaler, feature_order = load_artifacts()
+model, scaler, feature_order = load_model_artifacts()
 
 # ---------------------------------------------------------
 # 6. LOGIC
@@ -204,7 +198,6 @@ model, scaler, feature_order = load_artifacts()
 def make_prediction(payload):
     if not model or not scaler: return None
     try:
-        # Create DF
         df = pd.DataFrame([payload])
         
         # Ensure strict column ordering matching training
@@ -224,8 +217,8 @@ def make_prediction(payload):
         except: prob = 1.0 if pred == 1 else 0.0
         
         reason = "Stable metrics"
-        if prob > 0.5:
-            reason = "High Lapse Probability detected"
+        if pred == 1 and payload.get('RETENTION_POLY_QTY', 0) < payload.get('PREV_POLY_INFORCE_QTY', 0):
+            reason = "Retention < Previous"
             
         return {"prediction": "LAPSE" if pred == 1 else "RETAIN", "confidence_score": prob, "primary_driver": reason}
     except Exception as e:
@@ -239,24 +232,26 @@ if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
 
 def home_page():
+    # Centered Header like Screenshot
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);'>ChurnAlyse</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
+    # Green Pill Status Bar (Exact match to screenshot)
     if model:
         st.markdown(f"""
         <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; display: inline-block;">
-            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
+            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded (Embedded)</span>
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.error(f"🔴 Models Missing at: {MODEL_PATH}")
-        st.info("Run: python integrate_kaggle_dataset.py")
+        st.error(f"🔴 Models Missing. Please run: python integrate_kaggle_dataset.py")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
+    # Start Button (Green)
     col1, col2 = st.columns([1, 4])
     with col1:
         if st.button("Start Now"):
@@ -270,40 +265,44 @@ def predict_page():
     c1, c2 = st.columns([1, 1.3])
     with c1:
         with st.form("risk_form"):
-            st.caption("Policy Metrics")
-            p_amt = st.number_input("Policy Amount", 0, 1000000, 50000)
-            prem = st.number_input("Premium Amount", 0, 50000, 1000)
-            tenure = st.number_input("Tenure (Months)", 0, 360, 24)
-            age = st.number_input("Age", 18, 100, 35)
-            credit = st.number_input("Credit Score", 300, 850, 700)
-            claims = st.slider("Claims History", 0, 10, 0)
+            st.caption("Agency Metrics")
+            # These inputs match what your model expects
+            ret = st.number_input("Retained Qty", 0, 5000, 90)
+            prev = st.number_input("Prev. Qty", 0, 5000, 100)
+            loss = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
+            loss3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
+            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
+            curr = st.number_input("Curr. Qty", 0, 5000, 90)
+            
+            st.caption("Context")
+            prem = st.number_input("Premium", 0, 100000, 3500)
+            
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        payload = {
-            "policy_amount": p_amt, "premium_amount": prem, "policy_tenure_months": tenure,
-            "age": age, "credit_score": credit, "claims_history": claims,
-            "income": p_amt * 0.1, "premium_to_tenure_ratio": prem / (tenure + 1)
-        }
-        
+        # Construct payload
+        payload = {"RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev, "POLY_INFORCE_QTY": curr,
+                   "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth}
         res = make_prediction(payload)
         
         with c2:
             if res:
                 risk = "High" if res['prediction'] == "LAPSE" else "Low"
+                # Color logic: Red for High, Green for Low
                 color = "#ef4444" if risk == "High" else "#2ecc71"
                 
+                # HTML Card Result
                 st.markdown(f"""
                 <div class="metric-card" style="border-left: 8px solid {color}; align-items: flex-start; text-align: left; padding-left: 30px;">
                     <h3 style="color:{color}; margin:0; font-size: 24px;">RISK LEVEL: {risk.upper()}</h3>
                     <h1 style="font-size: 4rem; margin: 10px 0;">{res['confidence_score']:.1%}</h1>
-                    <p style="opacity: 0.8; font-size: 16px;">{res['primary_driver']}</p>
+                    <p style="opacity: 0.8; font-size: 16px;">Primary Driver: {res['primary_driver']}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Radar Chart
-                categories = ['Premium Risk', 'Tenure Risk', 'Credit Risk']
-                vals = [min(1, prem/5000), max(0, 1-(tenure/60)), max(0, 1-(credit/850))]
+                categories = ['Retention Gap', 'Loss Risk', 'Growth Lag']
+                vals = [max(0,(prev-ret)/prev) if prev>0 else 0, min(1, loss/150), 1 if growth<0 else 0.2]
                 fig = go.Figure(go.Scatterpolar(r=vals, theta=categories, fill='toself', line_color=color))
                 fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", 
                                   font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40), height=300)
@@ -314,22 +313,29 @@ def performance_page():
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
     st.title("🏆 Model Leaderboard")
     
+    # For the Kaggle pipeline, we usually don't save a JSON leaderboard.
+    # We display a placeholder or load if it exists.
     if os.path.exists(LEADERBOARD_PATH):
-        with open(LEADERBOARD_PATH, 'r') as f: leaderboard = json.load(f)
+        with open(LEADERBOARD_PATH, 'r') as f:
+            leaderboard = json.load(f)
+        
         data = [{"Model": k, **v} for k, v in leaderboard.items()]
         df = pd.DataFrame(data).sort_values("accuracy", ascending=False)
         
         for i, row in df.iterrows():
             st.markdown(f"### 🤖 {row['Model']}")
             cols = st.columns(5)
-            def mbox(lbl, val): return f"""<div class="metric-card"><div class="metric-label">{lbl}</div><div class="metric-value">{val}</div></div>"""
+            
+            def mbox(lbl, val):
+                return f"""<div class="metric-card"><div class="metric-label">{lbl}</div><div class="metric-value">{val}</div></div>"""
+            
             cols[0].markdown(mbox("Accuracy", f"{row['accuracy']:.1%}"), unsafe_allow_html=True)
             cols[1].markdown(mbox("Precision", f"{row['precision']:.1%}"), unsafe_allow_html=True)
             cols[2].markdown(mbox("Recall", f"{row['recall']:.1%}"), unsafe_allow_html=True)
             cols[3].markdown(mbox("F1 Score", f"{row['f1_score']:.1%}"), unsafe_allow_html=True)
             cols[4].markdown(mbox("AUC", f"{row['auc']:.3f}"), unsafe_allow_html=True)
     else:
-        st.info("Leaderboard JSON not available (Kaggle pipeline saves models directly). Check logs for performance.")
+        st.info("Leaderboard data not available for this training run. Please check training logs.")
 
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
