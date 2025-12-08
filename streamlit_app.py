@@ -1,33 +1,31 @@
 import streamlit as st
+import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import joblib
 import os
 import sys
-import plotly.graph_objects as go
+import json
 
 # ---------------------------------------------------------
-# 1. PAGE CONFIGURATION
+# 1. SETUP & CONFIGURATION
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="ChurnAlyse", 
+    page_title="ChurnAlyse AI", 
     layout="wide", 
     page_icon="📉",
     initial_sidebar_state="expanded"
 )
 
-# ---------------------------------------------------------
-# 2. PATHS (Pointing to the NEW Kaggle Model)
-# ---------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(BASE_DIR, 'src'))
-
-# FIX: Force app to look for the Kaggle model first
-MODEL_PATH = os.path.join(BASE_DIR, "models", "kaggle_ensemble_model.joblib")
-PREPROCESSOR_PATH = os.path.join(BASE_DIR, "models", "kaggle_preprocessor.joblib")
+# Constants (Pointing to the successfully trained model)
+MODEL_DIR = "models"
+MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
+SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
+FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
+LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 3. CSS (GREEN THEME & FLOATING CIRCLES)
+# 2. CUSTOM CSS & ANIMATION
 # ---------------------------------------------------------
 st.markdown("""
 <style>
@@ -57,6 +55,8 @@ st.markdown("""
     .circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
     .circles li:nth-child(4) { left: 40%; width: 60px; height: 60px; animation-delay: 0s; animation-duration: 18s; }
     .circles li:nth-child(5) { left: 65%; width: 20px; height: 20px; animation-delay: 0s; }
+    .circles li:nth-child(6) { left: 75%; width: 110px; height: 110px; animation-delay: 3s; animation-duration: 15s; }
+    .circles li:nth-child(7) { left: 35%; width: 150px; height: 150px; animation-delay: 7s; animation-duration: 10s; }
 
     @keyframes animate {
         0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 50%; }
@@ -65,159 +65,139 @@ st.markdown("""
 
     /* UI ELEMENTS */
     .block-container { z-index: 10; position: relative; }
-    
-    .stButton>button {
-        background-color: #2ecc71 !important; color: white !important;
-        border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600;
-        transition: all 0.3s ease;
-    }
+    .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
     .stButton>button:hover { transform: scale(1.02); }
-
-    .metric-card {
-        background-color: rgba(255, 255, 255, 0.05); padding: 20px;
-        border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px); margin-bottom: 15px;
-    }
+    .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
+    .stTextInput>div>div>input, .stNumberInput>div>div>input { background-color: #0b1e33 !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
     
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: #0b1e33 !important; color: white !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-    }
+    /* HIDE SIDEBAR ON HOMEPAGE */
+    .st-emotion-cache-163d83s { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li></ul>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. LOAD ARTIFACTS
+# 3. DATA LOADING (Uses correct paths)
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
     try:
-        try: from models.ensemble import ChurnEnsembleModel
-        except ImportError: pass
-
-        if not os.path.exists(MODEL_PATH): 
-            # Fallback to old model if new one is missing, to prevent crash
-            old_path = os.path.join(BASE_DIR, "models", "xgboost_optimized_model_new.joblib")
-            if os.path.exists(old_path):
-                return joblib.load(old_path), None, None # Return old model
-            return None, None, f"Missing: {MODEL_PATH}"
-    
         model = joblib.load(MODEL_PATH)
-        preprocessor_data = joblib.load(PREPROCESSOR_PATH)
-        
-        if isinstance(preprocessor_data, dict):
-            scaler = preprocessor_data.get('scaler')
-            feature_order = preprocessor_data.get('feature_names', [])
-        else:
-            scaler = preprocessor_data.scaler
-            feature_order = preprocessor_data.feature_names
-            
+        scaler = joblib.load(SCALER_PATH)
+        feature_order = joblib.load(FEATURE_PATH)
         return model, scaler, feature_order
-    except Exception as e:
-        return None, None, str(e)
+    except:
+        return None, None, []
+
+@st.cache_data
+def get_leaderboard():
+    if not os.path.exists(LEADERBOARD_PATH): return None
+    try:
+        with open(LEADERBOARD_PATH, 'r') as f: return json.load(f)
+    except: return None
 
 model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
-# 5. PREDICTION LOGIC (SHAPE FIX)
+# 4. PREDICTION LOGIC (Ensures 11 inputs are processed)
 # ---------------------------------------------------------
 def make_prediction(payload):
-    if model is None: return None
+    if not model or not scaler: return None
         
     try:
-        # 1. Create DataFrame
         df = pd.DataFrame([payload])
+        final_df = pd.DataFrame()
         
-        # 2. DYNAMIC ALIGNMENT (The Fix)
-        # If we have feature names from the Kaggle model, we align to them.
-        if feature_order and len(feature_order) > 0:
-            final_df = pd.DataFrame()
-            for col in feature_order:
-                # If input exists, use it. If not, 0.
-                final_df[col] = df[col] if col in df.columns else 0.0
+        # Align all inputs to the trained feature order
+        for col in feature_order:
+            final_df[col] = df[col] if col in df.columns else 0.0
             
-            # Scale
-            X_input = scaler.transform(final_df)
-        else:
-            # Fallback for old model (expects specific 6 columns)
-            # This handles the "expected 6" case if old model loaded
-            cols = ["RETENTION_POLY_QTY", "PREV_POLY_INFORCE_QTY", "LOSS_RATIO", "LOSS_RATIO_3YR", "GROWTH_RATE_3YR"]
-            final_df = pd.DataFrame()
-            for col in cols:
-                final_df[col] = df[col] if col in df.columns else 0.0
-            # Old model likely didn't use this specific scaler
-            X_input = final_df.values
-
-        # 3. Predict
+        X_input = scaler.transform(final_df)
         pred = model.predict(X_input)[0]
-        try: prob = model.predict_proba(X_input)[0][1]
-        except: prob = 1.0 if pred == 1 else 0.0
+        prob = model.predict_proba(X_input)[0][1]
         
         return {"risk": "High" if pred==1 else "Low", "score": prob}
-    except Exception as e:
-        st.error(f"Prediction Error: {e}")
+    except:
         return None
 
 # ---------------------------------------------------------
-# 6. PAGES
+# 5. PAGES
 # ---------------------------------------------------------
+
+# Navigation state management
 if "page" not in st.session_state: st.session_state.page = "home"
-def go_to(p): st.session_state.page = p
+
+# FINAL FIXED GO_TO FUNCTION
+def go_to(p):
+    st.session_state.page = p
+    st.rerun() 
+
 
 def home_page():
+    # --- RESTORED HOMEPAGE UI ---
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
+    
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px;'>ChurnAlyse</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='opacity: 0.9; font-weight: 300;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    if model:
-        st.markdown(f"""
-        <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block;">
-            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.error(f"🔴 Error: {feature_order}")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if model:
+            st.markdown(f"""
+            <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;">
+                <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("🔴 Error: Model not found. Please run training script.")
 
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, _ = st.columns([1, 4])
-    with col1:
-        if st.button("Start Now"): go_to("predict")
+    st.markdown("<br>", unsafe_allow_html=True)
+    col4, col5, col6 = st.columns([1, 1, 1])
+    with col5:
+        # THE DEFINITIVE BUTTON FIX
+        if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
+            go_to("Predict") # Calls the function that sets state AND forces rerun
+
 
 def predict_page():
-    st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_pred", on_change=lambda: go_to(st.session_state.nav_pred.lower()))
     st.title("🔮 Lapse Risk Predictor")
 
     c1, c2 = st.columns([1, 1.3])
     with c1:
         with st.form("risk_form"):
-            # RESTORED EXACT INPUTS FROM SCREENSHOTS
             st.markdown("### 1. Customer")
-            age = st.number_input("Age", 18, 100, 30)
-            prem = st.number_input("Premium", 0, 100000, 3500)
-            tenure = st.number_input("Tenure (Yrs)", 0.0, 50.0, 1.5)
+            c3, c4 = st.columns(2)
+            age = c3.number_input("Age", 18, 100, 30, key='age')
+            tenure = c4.number_input("Tenure (Yrs)", 0.0, 50.0, 3.5, key='tenure')
+            prem = st.number_input("Premium Amount", 0, 100000, 3500, key='prem')
             
-            st.markdown("### 2. Agency Metrics")
-            ret = st.number_input("Retained Qty", 0, 5000, 90)
-            prev = st.number_input("Prev. Qty", 0, 5000, 100)
-            loss = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
-            loss3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
+            st.markdown("### 2. Channels")
+            ch1, ch2, ch3 = st.columns(3)
+            agent_ch = ch1.checkbox("Agent", True)
+            digital_ch = ch2.checkbox("Digital", False)
+            banca_ch = ch3.checkbox("Bancassurance", False)
+
+            st.markdown("### 3. Metrics (High-Accuracy Drivers)")
+            p1, p2 = st.columns(2)
+            ret = p1.number_input("Retained Qty", 0, 5000, 90, help="RETENTION_POLY_QTY")
+            prev = p2.number_input("Previous Qty", 0, 5000, 100, help="PREV_POLY_INFORCE_QTY")
+            
+            p3, p4 = st.columns(2)
+            loss = p3.number_input("Loss Ratio", 0.0, 500.0, 65.0)
+            loss3 = p4.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
             growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
-            curr = st.number_input("Curr. Qty", 0, 5000, 90)
             
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        # Combine inputs into one payload
+        # Construct payload with ALL 11 FEATURES
         payload = {
-            "RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev, 
-            "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth,
-            "policy_amount": prem * 10, "premium_amount": prem, "policy_tenure_months": tenure * 12, 
-            "age": age, "income": prem * 5, "credit_score": 700
+            "AGE": age, "PREMIUM": prem, "TENURE": tenure,
+            "AGENT_CHANNEL": int(agent_ch), "DIGITAL_CHANNEL": int(digital_ch), "BANCASSURANCE": int(banca_ch),
+            "RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev,
+            "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth
         }
         
         res = make_prediction(payload)
@@ -228,25 +208,107 @@ def predict_page():
                 st.markdown(f"""
                 <div class="metric-card" style="border-left: 8px solid {color}; text-align: left;">
                     <h3 style="color:{color}; margin:0;">RISK LEVEL: {res['risk'].upper()}</h3>
-                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}</h1>
-                    <p style="opacity: 0.8;">{res.get('driver', 'Probability based on model')}</p>
+                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}<span style="font-size: 1rem; color: #aaa"> Probability</span></h1>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Strategies
                 st.markdown("### Analysis")
-                if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected.")
-                if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%).")
+                if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
+                if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
                 st.markdown("### Strategy")
-                st.info("Offer premium reminders")
-                st.info("Personalized agent follow-up")
+                st.info("Offer personalized agent follow-up and premium reminders.")
+                
+                # Radar Chart
+                categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
+                ret_gap = max(0, (prev - ret) / prev) if prev > 0 else 0
+                loss_norm = min(1, loss / 100.0)
+                growth_inv = min(1, max(0, (10 - growth)/20))
+
+                fig = go.Figure()
+                fig.add_trace(go.Scatterpolar(r=[ret_gap, loss_norm, growth_inv], theta=categories, fill='toself', name='Current Policy', line_color=color))
+                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
+                st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
-    st.sidebar.title("Navigation")
-    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
-    st.title("🏆 Model Leaderboard")
-    st.info("Check training logs for detailed metrics.")
+    st.title("🏆 Model Performance Leaderboard")
+    
+    # Load the JSON data
+    data = get_leaderboard()
+    
+    if not data:
+        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully to generate models/leaderboard.json.")
+        return
 
-if st.session_state.page == "home": home_page()
-elif st.session_state.page == "predict": predict_page()
-else: performance_page()
+    st.markdown("---")
+
+    # Iterate through all models in the JSON data
+    # This loop will display the 5 metrics for every model present in the file (assumed to be 5)
+    
+    for model_name, metrics in data.items():
+        
+        # Display Model Name
+        st.markdown(f"### {model_name}")
+        
+        # Create 5 columns for the 5 metrics
+        cols = st.columns(5)
+        
+        # Define the 5 metrics and their keys in the JSON
+        metric_keys = ["accuracy", "precision", "recall", "f1_score", "auc"]
+        
+        for i, key in enumerate(metric_keys):
+            # Fetch the value, defaulting to 0 if missing (should not happen if train_full.py ran)
+            value = metrics.get(key, 0.0)
+            
+            # Format value for display
+            if key == "accuracy":
+                display_value = f"{value:.2%}"
+            else:
+                display_value = f"{value:.3f}"
+            
+            # Use custom markdown/metric to display card style
+            with cols[i]:
+                st.markdown(f"""
+                <div class="metric-card" style="text-align: center; padding: 10px;">
+                    <p style="margin:0; font-size: 14px; color: #aaa">{key.upper().replace('_', ' ')}</p>
+                    <h4 style="margin: 5px 0; font-size: 1.5rem; color: #2ecc71;">{display_value}</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+        st.markdown("---") # Separator between models
+# ---------------------------------------------------------
+# 6. MAIN NAVIGATION
+# ---------------------------------------------------------
+def main():
+    
+    # 1. Handle sidebar visibility based on page state
+    if st.session_state.page in ("home", "Home"):
+        # Hide sidebar completely on the homepage
+        st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
+
+    # 2. Render Sidebar Navigation for other pages
+    else:
+        with st.sidebar:
+            st.title("Navigation")
+            page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main', index=["Home", "Predict", "Performance"].index(st.session_state.page))
+            st.markdown("---")
+            if model:
+                st.caption(f"🟢 Model Loaded")
+            else:
+                st.caption("🔴 No Model Found")
+            
+            # Sidebar navigation action
+            if page != st.session_state.page:
+                st.session_state.page = page
+                st.rerun()
+
+    # 3. Render the current page
+    if st.session_state.page in ("home", "Home"):
+        home_page()
+    elif st.session_state.page == "Predict":
+        predict_page()
+    else: # Performance
+        performance_page()
+
+if __name__ == "__main__":
+    main()
