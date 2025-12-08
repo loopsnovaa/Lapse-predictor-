@@ -127,7 +127,7 @@ if "page" not in st.session_state: st.session_state.page = "home"
 # 1. New Navigation Function
 def go_to(p):
     st.session_state.page = p
-    st.experimental_rerun() # Forces immediate page switch
+    st.rerun() # Forces immediate page switch
 
 # 2. Updated Home Page Function
 def home_page():
