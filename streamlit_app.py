@@ -1,296 +1,357 @@
 import streamlit as st
-import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import joblib
 import os
+import sys
 import json
+import plotly.graph_objects as go
 
 # ---------------------------------------------------------
-# SETUP & MODEL LOADING (Cloud-Native Logic)
+# 1. PAGE CONFIGURATION (Critical: Must be first)
 # ---------------------------------------------------------
-st.set_page_config(page_title="ChurnAlyse", layout="wide", page_icon="📉")
+st.set_page_config(
+    page_title="ChurnAlyse", 
+    layout="wide", 
+    page_icon="📉",
+    initial_sidebar_state="expanded"
+)
 
-# Paths
-MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
-SCALER_PATH = "models/scaler_new.joblib"
-FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
-LEADERBOARD_PATH = "models/leaderboard.json"
+# ---------------------------------------------------------
+# 2. PATHS & SETUP (Updated to match your Kaggle Pipeline)
+# ---------------------------------------------------------
+# Add src to path so we can load the custom model class if needed
+sys.path.append('src')
 
+MODEL_PATH = "models/kaggle_ensemble_model.joblib"
+PREPROCESSOR_PATH = "models/kaggle_preprocessor.joblib"
+
+# ---------------------------------------------------------
+# 3. CSS & ANIMATION (YOUR EXACT REQUESTED STYLE)
+# ---------------------------------------------------------
+st.markdown("""
+<style>
+    /* 1. APP BACKGROUND - Dark Blue Gradient */
+    [data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
+        color: white;
+        overflow-x: hidden;
+    }
+    
+    [data-testid="stSidebar"] {
+        background-color: #0b1e33;
+        border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* 2. FLOATING CIRCLES ANIMATION */
+    .circles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0; /* Behind everything */
+        pointer-events: none;
+    }
+
+    .circles li {
+        position: absolute;
+        display: block;
+        list-style: none;
+        width: 20px;
+        height: 20px;
+        background: rgba(46, 204, 113, 0.2); /* GREEN TINT */
+        animation: animate 25s linear infinite;
+        bottom: -150px;
+        border-radius: 50%;
+    }
+
+    /* RANDOMIZE POSITIONS */
+    .circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
+    .circles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
+    .circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
+    .circles li:nth-child(4) { left: 40%; width: 60px; height: 60px; animation-delay: 0s; animation-duration: 18s; }
+    .circles li:nth-child(5) { left: 65%; width: 20px; height: 20px; animation-delay: 0s; }
+    .circles li:nth-child(6) { left: 75%; width: 110px; height: 110px; animation-delay: 3s; }
+    .circles li:nth-child(7) { left: 35%; width: 150px; height: 150px; animation-delay: 7s; }
+    .circles li:nth-child(8) { left: 50%; width: 25px; height: 25px; animation-delay: 15s; animation-duration: 45s; }
+    .circles li:nth-child(9) { left: 20%; width: 15px; height: 15px; animation-delay: 2s; animation-duration: 35s; }
+    .circles li:nth-child(10){ left: 85%; width: 150px; height: 150px; animation-delay: 0s; animation-duration: 11s; }
+
+    @keyframes animate {
+        0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 50%; }
+        100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
+    }
+
+    /* 3. ENSURE CONTENT IS VISIBLE */
+    .block-container {
+        z-index: 10 !important;
+        position: relative;
+        background: transparent;
+    }
+
+    /* 4. BUTTON STYLING (Green) */
+    .stButton>button {
+        background-color: #2ecc71 !important;
+        color: white !important;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stButton>button:hover { 
+        background-color: #27ae60 !important; 
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(46, 204, 113, 0.3);
+    }
+
+    /* 5. METRIC CARD STYLING (Glass) */
+    .metric-card {
+        background-color: rgba(255, 255, 255, 0.05); 
+        padding: 20px; 
+        border-radius: 12px; 
+        border: 1px solid rgba(255,255,255,0.1); 
+        margin-bottom: 15px;
+        backdrop-filter: blur(10px);
+    }
+    .metric-label {
+        font-size: 14px;
+        color: #2ecc71 !important;
+        margin-bottom: 5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: white !important;
+        margin: 0;
+    }
+    
+    /* 6. INPUT FIELDS */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: #0b1e33 !important; 
+        color: white !important; 
+        border: 1px solid rgba(255,255,255,0.2) !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 4. INJECT HTML FOR ANIMATION
+# ---------------------------------------------------------
+st.markdown("""
+    <ul class="circles">
+        <li></li><li></li><li></li><li></li><li></li>
+        <li></li><li></li><li></li><li></li><li></li>
+    </ul>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# 5. DATA LOADING (Updated Logic)
+# ---------------------------------------------------------
 @st.cache_resource
-def load_model_artifacts():
-    """Load models directly into memory (No API needed)"""
+def load_artifacts():
     try:
-        if not os.path.exists(MODEL_PATH):
+        # Load the custom model class structure if necessary
+        try:
+            from src.models.ensemble import ChurnEnsembleModel
+        except ImportError:
+            pass # It might be pickled with the object
+
+        if not os.path.exists(MODEL_PATH) or not os.path.exists(PREPROCESSOR_PATH):
             return None, None, None
             
+        # Load Model
         model = joblib.load(MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        features = joblib.load(FEATURE_ORDER_PATH)
-        return model, scaler, features
+        
+        # Load Preprocessor (Dict containing scaler & encoders)
+        preprocessor_data = joblib.load(PREPROCESSOR_PATH)
+        scaler = preprocessor_data.get('scaler')
+        feature_order = preprocessor_data.get('feature_names', [])
+        
+        return model, scaler, feature_order
+        
     except Exception as e:
+        st.error(f"Failed to load artifacts: {e}")
         return None, None, None
 
-@st.cache_data
-def load_leaderboard():
-    """Load leaderboard directly from JSON file"""
-    try:
-        if not os.path.exists(LEADERBOARD_PATH):
-            return None
-        with open(LEADERBOARD_PATH, 'r') as f:
-            return json.load(f)
-    except:
-        return None
-
-# Load artifacts on startup
-model, scaler, feature_order = load_model_artifacts()
+model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
-# INTERNAL PREDICTION LOGIC
+# 6. LOGIC
 # ---------------------------------------------------------
 def make_prediction(payload):
-    """Runs XGBoost prediction locally in the dashboard"""
-    if not model or not scaler:
-        return None
-    
+    if not model or not scaler: return None
     try:
-        # Convert payload to DataFrame
+        # Create DF
         df = pd.DataFrame([payload])
         
-        # Ensure all training columns exist
+        # Ensure strict column ordering matching training
+        final_df = pd.DataFrame()
         for col in feature_order:
-            if col not in df.columns:
-                df[col] = 0
-                
-        # Sort and Scale
-        df_sorted = df[feature_order]
-        X_scaled = scaler.transform(df_sorted)
+            if col in df.columns:
+                final_df[col] = df[col]
+            else:
+                final_df[col] = 0.0 # Fill missing features with 0
+        
+        # Scale
+        X_scaled = scaler.transform(final_df)
         
         # Predict
-        prediction = model.predict(X_scaled)[0]
-        probability = model.predict_proba(X_scaled)[0][1]
+        pred = model.predict(X_scaled)[0]
+        try: prob = model.predict_proba(X_scaled)[0][1]
+        except: prob = 1.0 if pred == 1 else 0.0
         
-        # Explanation Rule (Retention vs Previous)
-        retention = payload.get('RETENTION_POLY_QTY', 0)
-        prev = payload.get('PREV_POLY_INFORCE_QTY', 0)
         reason = "Stable metrics"
-        if prediction == 1:
-            reason = f"Retention Qty ({retention}) < Previous Qty ({prev})"
-
-        return {
-            "prediction": "LAPSE" if prediction == 1 else "RETAIN",
-            "confidence_score": probability,
-            "primary_driver": reason
-        }
+        # Logic for explanation
+        if prob > 0.5:
+            reason = "High Lapse Probability detected by Ensemble Model"
+            
+        return {"prediction": "LAPSE" if pred == 1 else "RETAIN", "confidence_score": prob, "primary_driver": reason}
     except Exception as e:
         st.error(f"Prediction Error: {e}")
         return None
 
 # ---------------------------------------------------------
-# CSS STYLING (FIXED)
-# ---------------------------------------------------------
-CUSTOM_CSS = """
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
-[data-testid="stAppViewContainer"] { background-color: #0d3a66 !important; color: white !important; }
-[data-testid="stSidebar"] { background-color: #0f4c81 !important; }
-h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
-
-/* Input Fields */
-.stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-    color: black !important; background-color: #e6f2ff !important; border-radius: 5px;
-}
-
-.stButton>button {
-    background-color: #b2f7b1 !important; color: black !important; border-radius: 10px;
-    border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
-}
-.stButton>button:hover { background-color: #A0E15E !important; }
-
-.metric-card {
-    background-color: rgba(255, 255, 255, 0.1); 
-    padding: 20px; 
-    border-radius: 12px; 
-    border: 1px solid rgba(255,255,255,0.2); 
-    margin-bottom: 10px;
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-.metric-label {
-    font-size: 14px;
-    color: #A0E15E !important;
-    margin-bottom: 5px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.metric-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: white !important;
-    margin: 0;
-}
-</style>
-"""
-
-st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# HELPER FUNCTIONS
-# ---------------------------------------------------------
-def explain_channels(data):
-    ch1, ch2, ch3 = data.get("channel1", 0), data.get("channel2", 0), data.get("channel3", 0)
-    explanation = []
-    if ch1 == 0 and ch2 == 0 and ch3 == 0: explanation.append("Low-engagement channel (walk-in/telemarketing).")
-    if ch1 >= 1: explanation.append("Acquired through advisor/agent (strong follow-up).")
-    if ch2 >= 1: explanation.append("Acquired through digital channel (medium risk).")
-    if ch3 >= 1: explanation.append("Bancassurance channel (moderate stability).")
-    return explanation if explanation else ["Mixed channel combination."]
-
-def explain_risk_factors(data, risk_level):
-    reasons = []
-    if data.get("RETENTION_POLY_QTY", 0) < data.get("PREV_POLY_INFORCE_QTY", 0):
-        reasons.append("⚠️ Portfolio Shrinkage detected (Retention < Previous).")
-    if data.get("LOSS_RATIO", 0) > 1.0:
-        reasons.append("⚠️ Critical Loss Ratio (>100%).")
-    if data.get("premium_amount", 0) > 3000:
-        reasons.append("💰 High Premium (>3000).")
-    if data.get("policy_tenure_years", 0) < 2:
-        reasons.append("⏳ Short tenure (< 2 years).")
-    
-    strategies = ["Offer premium reminders", "Personalized agent follow-up", "Explain long-term benefits"]
-    return reasons, strategies
-
-# ---------------------------------------------------------
-# NAVIGATION
+# 7. PAGES
 # ---------------------------------------------------------
 if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
 
 def home_page():
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.title("ChurnAlyse")
-    st.subheader("Cloud-Native Insurance Analytics")
+    st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5);'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='opacity: 0.9; font-weight: 300;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     if model:
-        st.success("🟢 ML Engine Loaded (Embedded)")
+        st.markdown(f"""
+        <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; display: inline-block;">
+            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded ({len(feature_order)} features)</span>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.error("🔴 Model Files Missing. Please check 'models/' folder.")
+        st.error("🔴 Models Missing. Please run integrate_kaggle_dataset.py")
 
-    if st.button("Start Now"): go_to("predict")
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        if st.button("Start Now"):
+            go_to("predict")
 
 def predict_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_pred", on_change=lambda: go_to(st.session_state.nav_pred.lower()))
-    st.title("Predict Policy Lapse Risk")
+    st.title("🔮 Lapse Risk Predictor")
 
-    col1, col2 = st.columns([1, 1.2])
-    with col1:
-        with st.form("main_form"):
-            st.markdown("### 1. Customer")
-            age = st.number_input("Age", 18, 99, 30)
-            prem = st.number_input("Premium", 1, 100000, 3500)
-            ten = st.number_input("Tenure (Yrs)", 0.0, 50.0, 1.5)
-            ch1 = st.number_input("Agent Channel", 0, 1, 0)
-            ch2 = st.number_input("Digital Channel", 0, 1, 1)
-            ch3 = st.number_input("Bancassurance", 0, 1, 0)
+    c1, c2 = st.columns([1, 1.3])
+    with c1:
+        with st.form("risk_form"):
+            st.caption("Policy Metrics")
             
-            st.markdown("### 2. Agency Metrics")
-            ret_qty = st.number_input("Retained Qty", 0, 10000, 90)
-            prev_qty = st.number_input("Prev. Qty", 0, 10000, 100)
-            curr_qty = st.number_input("Curr. Qty", 0, 10000, 90)
-            loss_r = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
-            loss_3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
-            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
+            # Using some of the key features from your Kaggle dataset
+            p_amt = st.number_input("Policy Amount", 0, 1000000, 50000)
+            prem = st.number_input("Premium Amount", 0, 50000, 1000)
+            tenure = st.number_input("Tenure (Months)", 0, 360, 24)
+            age = st.number_input("Age", 18, 100, 35)
+            credit = st.number_input("Credit Score", 300, 850, 700)
             
-            submit = st.form_submit_button("Predict")
-
-    if submit:
-        # Macro Data
-        api_payload = {
-            "RETENTION_POLY_QTY": ret_qty, "PREV_POLY_INFORCE_QTY": prev_qty,
-            "POLY_INFORCE_QTY": curr_qty, "LOSS_RATIO": loss_r,
-            "LOSS_RATIO_3YR": loss_3, "GROWTH_RATE_3YR": growth
+            # Advanced inputs (simulated or simplified for UI)
+            claims = st.slider("Claims History", 0, 10, 0)
+            
+            submitted = st.form_submit_button("Analyze Risk")
+            
+    if submitted:
+        # Construct payload matching your Kaggle Schema
+        payload = {
+            "policy_amount": p_amt,
+            "premium_amount": prem,
+            "policy_tenure_months": tenure,
+            "age": age,
+            "credit_score": credit,
+            "claims_history": claims,
+            # Add calculated fields expected by engineer_features
+            "income": p_amt * 0.1, # Estimated
+            "premium_to_tenure_ratio": prem / (tenure + 1)
         }
-        # Micro Data
-        full_data = {**api_payload, "premium_amount": prem, "policy_tenure_years": ten, 
-                     "channel1": ch1, "channel2": ch2, "channel3": ch3}
         
-        # Internal Prediction Call (No API)
-        res = make_prediction(api_payload)
+        res = make_prediction(payload)
         
-        with col2:
+        with c2:
             if res:
-                prob = res['confidence_score']
                 risk = "High" if res['prediction'] == "LAPSE" else "Low"
-                color = "#d00000" if risk == "High" else "#A0E15E"
+                # Dynamic Color: Red for High Risk, Green for Low
+                color = "#ef4444" if risk == "High" else "#2ecc71"
                 
+                # HTML Card Result
                 st.markdown(f"""
-                <div class="metric-card" style="border-left: 5px solid {color}; display: block; text-align: left;">
-                    <h3 style="color:white; margin:0;">Risk Level: <span style="color:{color}">{risk}</span></h3>
-                    <h1 style="color:white; margin:10px 0;">{prob*100:.1f}% <span style="font-size: 20px">Probability</span></h1>
-                    <p style="color:#ccc;">{res['primary_driver']}</p>
+                <div class="metric-card" style="border-left: 8px solid {color}; align-items: flex-start; text-align: left; padding-left: 30px;">
+                    <h3 style="color:{color}; margin:0; font-size: 24px;">RISK LEVEL: {risk.upper()}</h3>
+                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['confidence_score']:.1%}</h1>
+                    <p style="opacity: 0.8; font-size: 16px;">{res['primary_driver']}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                reasons, strats = explain_risk_factors(full_data, risk)
-                st.markdown("### Analysis")
-                for r in reasons: st.write(r)
-                if risk == "High":
-                    st.markdown("### Strategy")
-                    for s in strats: st.info(s)
+                # Radar Chart
+                categories = ['Premium Risk', 'Tenure Risk', 'Credit Risk']
+                # Normalize values for visualization roughly
+                vals = [
+                    min(1, prem/5000), 
+                    max(0, 1 - (tenure/60)), 
+                    max(0, 1 - (credit/850))
+                ]
+                
+                fig = go.Figure(go.Scatterpolar(r=vals, theta=categories, fill='toself', line_color=color))
+                fig.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)", 
+                    plot_bgcolor="rgba(0,0,0,0)", 
+                    font=dict(color="white"), 
+                    margin=dict(t=20, b=20, l=40, r=40), 
+                    height=300,
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 1]))
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
-    st.title("🏆 Model Performance Leaderboard")
+    st.title("🏆 Model Leaderboard")
     
-    leaderboard = load_leaderboard()
-    if not leaderboard:
-        st.warning("⚠️ Leaderboard data not found. Run `train_leaderboard.py` locally and upload 'models/leaderboard.json'.")
-        return
-
-    # --- PREPARE DATA ---
-    model_data = []
-    for name, metrics in leaderboard.items():
-        model_data.append({
-            "Model": name,
-            "Accuracy": metrics.get('accuracy', 0),
-            "Precision": metrics.get('precision', 0),
-            "Recall": metrics.get('recall', 0),
-            "F1 Score": metrics.get('f1_score', 0),
-            "AUC": metrics.get('auc', 0)
-        })
-    
-    # Sort by Accuracy
-    df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
-
-    # --- RENDER MODEL CARDS (WITH BOXES) ---
-    for index, row in df.iterrows():
-        st.markdown(f"### 🤖 {row['Model']}")
-        
-        c1, c2, c3, c4, c5 = st.columns(5)
-        
-        # Helper for cleaner code
-        def metric_box(label, value):
-            return f"""
-            <div class="metric-card">
-                <div class="metric-label">{label}</div>
-                <div class="metric-value">{value}</div>
-            </div>
-            """
+    # Leaderboard isn't saved as JSON in the new pipeline, 
+    # but we can try to load it if it exists or show a placeholder
+    try:
+        if os.path.exists("models/leaderboard.json"):
+            with open("models/leaderboard.json", 'r') as f:
+                leaderboard = json.load(f)
+                
+            data = [{"Model": k, **v} for k, v in leaderboard.items()]
+            df = pd.DataFrame(data).sort_values("accuracy", ascending=False)
             
-        c1.markdown(metric_box("Accuracy", f"{row['Accuracy']:.1%}"), unsafe_allow_html=True)
-        c2.markdown(metric_box("Precision", f"{row['Precision']:.1f%}"), unsafe_allow_html=True)
-        c3.markdown(metric_box("Recall", f"{row['Recall']:.1f%}"), unsafe_allow_html=True)
-        c4.markdown(metric_box("F1 Score", f"{row['F1 Score']:.1f%}"), unsafe_allow_html=True)
-        c5.markdown(metric_box("AUC", f"{row['AUC']:.1f%}"), unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
+            for i, row in df.iterrows():
+                st.markdown(f"### 🤖 {row['Model']}")
+                cols = st.columns(5)
+                
+                def mbox(lbl, val):
+                    return f"""<div class="metric-card"><div class="metric-label">{lbl}</div><div class="metric-value">{val}</div></div>"""
+                
+                cols[0].markdown(mbox("Accuracy", f"{row['accuracy']:.1%}"), unsafe_allow_html=True)
+                cols[1].markdown(mbox("Precision", f"{row['precision']:.1%}"), unsafe_allow_html=True)
+                cols[2].markdown(mbox("Recall", f"{row['recall']:.1%}"), unsafe_allow_html=True)
+                cols[3].markdown(mbox("F1 Score", f"{row['f1_score']:.1%}"), unsafe_allow_html=True)
+                cols[4].markdown(mbox("AUC", f"{row['auc']:.3f}"), unsafe_allow_html=True)
+        else:
+            st.info("Leaderboard JSON not generated in this run. (Check console logs for training metrics)")
+            
+    except Exception as e:
+        st.error(f"Error loading leaderboard: {e}")
 
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
