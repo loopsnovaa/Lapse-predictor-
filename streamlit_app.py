@@ -70,7 +70,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<ul class="stars"><li></li><li></li><li></li><li></li><li></li></ul>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # 3. DATA LOADING
