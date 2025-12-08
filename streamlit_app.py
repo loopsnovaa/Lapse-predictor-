@@ -232,10 +232,44 @@ def predict_page():
 
 
 def performance_page():
-    st.title("🏆 Model Leaderboard")
-    st.warning("Leaderboard data display here.")
+    st.title("Comparative Analysis")
+    
+    # Load the JSON data
+    data = get_leaderboard()
+    
+    if not data:
+        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully.")
+        return
 
+    # Convert dictionary data to a Pandas DataFrame for display
+    df = pd.DataFrame.from_dict(data, orient='index')
+    
+    # Clean up column names and sort
+    df.index.name = 'Model'
+    df.reset_index(inplace=True)
+    
+    # Ensure all 5 metrics are rounded and displayed
+    df = df.round(4)
 
+    st.markdown("### Top Performing Model")
+    
+    # Check if there's enough data for sorting
+    if not df.empty and 'accuracy' in df.columns:
+        df = df.sort_values(by="accuracy", ascending=False)
+        best_model = df.iloc[0]
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Best Model", best_model['Model'])
+        c2.metric("Top Accuracy", f"{best_model['accuracy']:.2%}")
+        c3.metric("Top F1 Score", f"{best_model['f1_score']:.4f}")
+    
+    st.markdown("### Full Model Comparison (All 5 Metrics for All Models)")
+    
+    # Display the full table
+    st.dataframe(
+        df.style.highlight_max(axis=0, color='#2ecc71', subset=['accuracy', 'f1_score', 'auc']),
+        use_container_width=True
+    )
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
