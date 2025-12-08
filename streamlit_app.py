@@ -80,25 +80,14 @@ st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><l
 # ---------------------------------------------------------
 # 3. DATA LOADING
 # ---------------------------------------------------------
-@st.cache_resource
-def load_artifacts():
-    try:
-        model = joblib.load(MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        feature_order = joblib.load(FEATURE_PATH)
-        return model, scaler, feature_order
-    except:
-        return None, None, []
-
-@st.cache_data
 def get_leaderboard():
     if not os.path.exists(LEADERBOARD_PATH): return None
     try:
-        with open(LEADERBOARD_PATH, 'r') as f: return json.load(f)
-    except: return None
-
-model, scaler, feature_order = load_artifacts()
-
+        # Using a fresh read without Streamlit's cache
+        with open(LEADERBOARD_PATH, 'r') as f: 
+            return json.load(f)
+    except: 
+        return None
 # ---------------------------------------------------------
 # 4. PREDICTION LOGIC
 # ---------------------------------------------------------
