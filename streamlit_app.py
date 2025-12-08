@@ -241,12 +241,23 @@ def performance_page():
     data = get_leaderboard()
     
     if not data:
-        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully to generate models/leaderboard.json.")
+        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully.")
         return
+
+    # Convert dictionary to DataFrame, sort by accuracy (highest first)
+    df = pd.DataFrame.from_dict(data, orient='index')
+    
+    if 'accuracy' in df.columns:
+        # Sort in descending order (highest accuracy first)
+        df_sorted = df.sort_values(by='accuracy', ascending=False)
+    else:
+        df_sorted = df
+        st.warning("Could not sort metrics as 'accuracy' column is missing.")
 
     st.markdown("---")
 
-    for model_name, metrics in data.items():
+    # Iterate through the SORTED DataFrame rows
+    for model_name, metrics in df_sorted.iterrows():
         
         st.markdown(f"### {model_name}")
         
@@ -257,6 +268,7 @@ def performance_page():
         for i, key in enumerate(metric_keys):
             value = metrics.get(key, 0.0)
             
+            # Use the correct display format (percentage for accuracy, float for others)
             if key == "accuracy":
                 display_value = f"{value:.2%}"
             else:
@@ -271,7 +283,6 @@ def performance_page():
                 """, unsafe_allow_html=True)
                 
         st.markdown("---")
-
 
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
