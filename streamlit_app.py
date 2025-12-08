@@ -47,7 +47,7 @@ st.markdown("""
     }
     .circles li {
         position: absolute; display: block; list-style: none;
-        width: 20px; height: 20px; background: rgba(46, 204, 113, 0.2);
+        width: 20px; height: 20px; background: rgba(255, 255, 255, 0.6);
         animation: animate 25s linear infinite; bottom: -150px; border-radius: 50%;
     }
     .circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
@@ -79,28 +79,7 @@ st.markdown("""
     
     
     
-    /* Shooting Star Animation */
-@keyframes shooting-star-animation {
-    0% { transform: rotate(225deg) translateX(0); opacity: 1; }
-    70% { opacity: 1; }
-    100% { transform: rotate(225deg) translateX(-1000px); opacity: 0; }
-}
-.stars {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 0; pointer-events: none;
-}
-.stars li {
-    position: absolute; display: block; list-style: none;
-    width: 2px; height: 150px; /* Long trail */
-    background: linear-gradient(to top, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.4));
-    border-radius: 50%;
-    animation: shooting-star-animation 5s linear infinite;
-}
-.stars li:nth-child(1) { left: 80%; top: -50px; animation-delay: 0s; animation-duration: 4s; }
-.stars li:nth-child(2) { left: 45%; top: -20px; animation-delay: 1.5s; animation-duration: 6s; }
-.stars li:nth-child(3) { left: 10%; top: -100px; animation-delay: 3s; animation-duration: 3s; }
-.stars li:nth-child(4) { left: 95%; top: -80px; animation-delay: 5s; animation-duration: 5s; }
-.stars li:nth-child(5) { left: 20%; top: -60px; animation-delay: 7s; animation-duration: 4.5s; }
+   
     /* UI ELEMENTS */
     .block-container { z-index: 10; position: relative; }
     .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
