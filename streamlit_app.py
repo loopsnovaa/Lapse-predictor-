@@ -69,6 +69,9 @@ st.markdown("""
     .stButton>button:hover { transform: scale(1.02); }
     .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
     .stTextInput>div>div>input, .stNumberInput>div>div>input { background-color: #0b1e33 !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+    
+    /* HIDE SIDEBAR ON HOMEPAGE */
+    .st-emotion-cache-163d83s { display: none; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -121,28 +124,43 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # 5. PAGES
 # ---------------------------------------------------------
-if "page" not in st.session_state: st.session_state.page = "home"
-# --- Replacement for go_to and home_page ---
 
-# 1. New Navigation Function
-# --- Replacement for go_to (Function definition must be near the top) ---
+# Navigation state management
+if "page" not in st.session_state: st.session_state.page = "home"
+
+# FINAL FIXED GO_TO FUNCTION
 def go_to(p):
     st.session_state.page = p
     st.rerun() 
-# ------------------------------------------------------------------------
 
-# --- Updated Home Page Function Logic ---
+
 def home_page():
-    # ... (Rest of the homepage setup code remains the same) ...
+    # --- RESTORED HOMEPAGE UI ---
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if model:
+            st.markdown(f"""
+            <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;">
+                <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("🔴 Error: Model not found. Please run training script.")
+
     st.markdown("<br>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     with col5:
-        # THE FINAL BUTTON FIX: Use st.session_state directly in the callback
+        # THE DEFINITIVE BUTTON FIX
         if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
-            st.session_state.page = "predict"
-            st.rerun() # Forces the immediate update
-# --- The rest of the script is unchanged ---
+            go_to("Predict") # Calls the function that sets state AND forces rerun
+
+
 def predict_page():
     st.title("🔮 Lapse Risk Predictor")
 
@@ -221,39 +239,35 @@ def performance_page():
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
-
 def main():
     
-    # 1. Determine if the sidebar should be shown (Show only on Predict/Performance pages)
-    show_sidebar = st.session_state.page not in ("home", "Home")
+    # 1. Handle sidebar visibility based on page state
+    if st.session_state.page in ("home", "Home"):
+        # Hide sidebar completely on the homepage
+        st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
 
-    if show_sidebar:
+    # 2. Render Sidebar Navigation for other pages
+    else:
         with st.sidebar:
             st.title("Navigation")
-            # Navigation link back to home added
-            page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main')
+            page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main', index=["Home", "Predict", "Performance"].index(st.session_state.page))
             st.markdown("---")
             if model:
                 st.caption(f"🟢 Model Loaded")
             else:
                 st.caption("🔴 No Model Found")
             
-            # Update page state based on sidebar selection
+            # Sidebar navigation action
             if page != st.session_state.page:
-                st.session_state.page = page.lower()
+                st.session_state.page = page
                 st.rerun()
-    else:
-        # For the homepage, we still need a hidden sidebar definition to prevent conflicts
-        # This also ensures the main content block has enough space
-        st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
-        
 
-    # 2. Render the current page
+    # 3. Render the current page
     if st.session_state.page in ("home", "Home"):
         home_page()
-    elif st.session_state.page == "predict":
+    elif st.session_state.page == "Predict":
         predict_page()
-    else: # performance
+    else: # Performance
         performance_page()
 
 if __name__ == "__main__":
