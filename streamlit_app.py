@@ -1,11 +1,11 @@
 import streamlit as st
+import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 import joblib
 import os
 import sys
 import json
-import plotly.graph_objects as go
 
 # ---------------------------------------------------------
 # 1. PAGE CONFIGURATION (Critical: Must be first)
@@ -18,16 +18,21 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. PATHS & SETUP (Updated to match your Kaggle Pipeline)
+# 2. PATHS & SETUP (FIXED WITH ABSOLUTE PATHS)
 # ---------------------------------------------------------
-# Add src to path so we can load the custom model class if needed
-sys.path.append('src')
+# Get the absolute path of the current folder
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_PATH = "models/kaggle_ensemble_model.joblib"
-PREPROCESSOR_PATH = "models/kaggle_preprocessor.joblib"
+# Add 'src' to python path so we can load the custom model class
+sys.path.append(os.path.join(BASE_DIR, 'src'))
+
+# Define Absolute Paths to Artifacts
+MODEL_PATH = os.path.join(BASE_DIR, "models", "kaggle_ensemble_model.joblib")
+PREPROCESSOR_PATH = os.path.join(BASE_DIR, "models", "kaggle_preprocessor.joblib")
+LEADERBOARD_PATH = os.path.join(BASE_DIR, "models", "leaderboard.json")
 
 # ---------------------------------------------------------
-# 3. CSS & ANIMATION (YOUR EXACT REQUESTED STYLE)
+# 3. CSS & ANIMATION (Green Floating Circles)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
@@ -51,7 +56,7 @@ st.markdown("""
         width: 100%;
         height: 100%;
         overflow: hidden;
-        z-index: 0; /* Behind everything */
+        z-index: 0;
         pointer-events: none;
     }
 
@@ -67,7 +72,6 @@ st.markdown("""
         border-radius: 50%;
     }
 
-    /* RANDOMIZE POSITIONS */
     .circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
     .circles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
     .circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
@@ -84,7 +88,7 @@ st.markdown("""
         100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
     }
 
-    /* 3. ENSURE CONTENT IS VISIBLE */
+    /* 3. ENSURE CONTENT IS VISIBLE (Z-INDEX FIX) */
     .block-container {
         z-index: 10 !important;
         position: relative;
@@ -95,18 +99,17 @@ st.markdown("""
     .stButton>button {
         background-color: #2ecc71 !important;
         color: white !important;
-        border-radius: 8px;
+        border-radius: 10px;
         border: none;
-        padding: 10px 24px;
-        font-size: 16px;
-        font-weight: 600;
+        padding: 10px 25px; 
+        font-size: 18px; 
+        font-weight: 600; 
+        width: 100%;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .stButton>button:hover { 
         background-color: #27ae60 !important; 
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(46, 204, 113, 0.3);
+        transform: scale(1.02);
     }
 
     /* 5. METRIC CARD STYLING (Glass) */
@@ -115,8 +118,13 @@ st.markdown("""
         padding: 20px; 
         border-radius: 12px; 
         border: 1px solid rgba(255,255,255,0.1); 
-        margin-bottom: 15px;
-        backdrop-filter: blur(10px);
+        margin-bottom: 10px;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(5px);
     }
     .metric-label {
         font-size: 14px;
@@ -158,22 +166,29 @@ st.markdown("""
 @st.cache_resource
 def load_artifacts():
     try:
-        # Load the custom model class structure if necessary
+        # 1. Force import the class so joblib can find it
         try:
-            from src.models.ensemble import ChurnEnsembleModel
+            from models.ensemble import ChurnEnsembleModel
         except ImportError:
-            pass # It might be pickled with the object
+            pass # Try loading anyway
 
+        # 2. Check files
         if not os.path.exists(MODEL_PATH) or not os.path.exists(PREPROCESSOR_PATH):
+            print(f"DEBUG: Missing files at {MODEL_PATH} or {PREPROCESSOR_PATH}")
             return None, None, None
             
-        # Load Model
+        # 3. Load
         model = joblib.load(MODEL_PATH)
-        
-        # Load Preprocessor (Dict containing scaler & encoders)
         preprocessor_data = joblib.load(PREPROCESSOR_PATH)
-        scaler = preprocessor_data.get('scaler')
-        feature_order = preprocessor_data.get('feature_names', [])
+        
+        # Handle Preprocessor (might be object or dict)
+        if isinstance(preprocessor_data, dict):
+            scaler = preprocessor_data.get('scaler')
+            feature_order = preprocessor_data.get('feature_names', [])
+        else:
+            # It's the object itself
+            scaler = preprocessor_data.scaler
+            feature_order = preprocessor_data.feature_names
         
         return model, scaler, feature_order
         
@@ -209,9 +224,8 @@ def make_prediction(payload):
         except: prob = 1.0 if pred == 1 else 0.0
         
         reason = "Stable metrics"
-        # Logic for explanation
         if prob > 0.5:
-            reason = "High Lapse Probability detected by Ensemble Model"
+            reason = "High Lapse Probability detected"
             
         return {"prediction": "LAPSE" if pred == 1 else "RETAIN", "confidence_score": prob, "primary_driver": reason}
     except Exception as e:
@@ -234,11 +248,12 @@ def home_page():
     if model:
         st.markdown(f"""
         <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; display: inline-block;">
-            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded ({len(feature_order)} features)</span>
+            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.error("🔴 Models Missing. Please run integrate_kaggle_dataset.py")
+        st.error(f"🔴 Models Missing at: {MODEL_PATH}")
+        st.info("Run: python integrate_kaggle_dataset.py")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
@@ -256,31 +271,19 @@ def predict_page():
     with c1:
         with st.form("risk_form"):
             st.caption("Policy Metrics")
-            
-            # Using some of the key features from your Kaggle dataset
             p_amt = st.number_input("Policy Amount", 0, 1000000, 50000)
             prem = st.number_input("Premium Amount", 0, 50000, 1000)
             tenure = st.number_input("Tenure (Months)", 0, 360, 24)
             age = st.number_input("Age", 18, 100, 35)
             credit = st.number_input("Credit Score", 300, 850, 700)
-            
-            # Advanced inputs (simulated or simplified for UI)
             claims = st.slider("Claims History", 0, 10, 0)
-            
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        # Construct payload matching your Kaggle Schema
         payload = {
-            "policy_amount": p_amt,
-            "premium_amount": prem,
-            "policy_tenure_months": tenure,
-            "age": age,
-            "credit_score": credit,
-            "claims_history": claims,
-            # Add calculated fields expected by engineer_features
-            "income": p_amt * 0.1, # Estimated
-            "premium_to_tenure_ratio": prem / (tenure + 1)
+            "policy_amount": p_amt, "premium_amount": prem, "policy_tenure_months": tenure,
+            "age": age, "credit_score": credit, "claims_history": claims,
+            "income": p_amt * 0.1, "premium_to_tenure_ratio": prem / (tenure + 1)
         }
         
         res = make_prediction(payload)
@@ -288,10 +291,8 @@ def predict_page():
         with c2:
             if res:
                 risk = "High" if res['prediction'] == "LAPSE" else "Low"
-                # Dynamic Color: Red for High Risk, Green for Low
                 color = "#ef4444" if risk == "High" else "#2ecc71"
                 
-                # HTML Card Result
                 st.markdown(f"""
                 <div class="metric-card" style="border-left: 8px solid {color}; align-items: flex-start; text-align: left; padding-left: 30px;">
                     <h3 style="color:{color}; margin:0; font-size: 24px;">RISK LEVEL: {risk.upper()}</h3>
@@ -302,22 +303,10 @@ def predict_page():
                 
                 # Radar Chart
                 categories = ['Premium Risk', 'Tenure Risk', 'Credit Risk']
-                # Normalize values for visualization roughly
-                vals = [
-                    min(1, prem/5000), 
-                    max(0, 1 - (tenure/60)), 
-                    max(0, 1 - (credit/850))
-                ]
-                
+                vals = [min(1, prem/5000), max(0, 1-(tenure/60)), max(0, 1-(credit/850))]
                 fig = go.Figure(go.Scatterpolar(r=vals, theta=categories, fill='toself', line_color=color))
-                fig.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", 
-                    plot_bgcolor="rgba(0,0,0,0)", 
-                    font=dict(color="white"), 
-                    margin=dict(t=20, b=20, l=40, r=40), 
-                    height=300,
-                    polar=dict(radialaxis=dict(visible=True, range=[0, 1]))
-                )
+                fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", 
+                                  font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40), height=300)
                 st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
@@ -325,33 +314,22 @@ def performance_page():
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
     st.title("🏆 Model Leaderboard")
     
-    # Leaderboard isn't saved as JSON in the new pipeline, 
-    # but we can try to load it if it exists or show a placeholder
-    try:
-        if os.path.exists("models/leaderboard.json"):
-            with open("models/leaderboard.json", 'r') as f:
-                leaderboard = json.load(f)
-                
-            data = [{"Model": k, **v} for k, v in leaderboard.items()]
-            df = pd.DataFrame(data).sort_values("accuracy", ascending=False)
-            
-            for i, row in df.iterrows():
-                st.markdown(f"### 🤖 {row['Model']}")
-                cols = st.columns(5)
-                
-                def mbox(lbl, val):
-                    return f"""<div class="metric-card"><div class="metric-label">{lbl}</div><div class="metric-value">{val}</div></div>"""
-                
-                cols[0].markdown(mbox("Accuracy", f"{row['accuracy']:.1%}"), unsafe_allow_html=True)
-                cols[1].markdown(mbox("Precision", f"{row['precision']:.1%}"), unsafe_allow_html=True)
-                cols[2].markdown(mbox("Recall", f"{row['recall']:.1%}"), unsafe_allow_html=True)
-                cols[3].markdown(mbox("F1 Score", f"{row['f1_score']:.1%}"), unsafe_allow_html=True)
-                cols[4].markdown(mbox("AUC", f"{row['auc']:.3f}"), unsafe_allow_html=True)
-        else:
-            st.info("Leaderboard JSON not generated in this run. (Check console logs for training metrics)")
-            
-    except Exception as e:
-        st.error(f"Error loading leaderboard: {e}")
+    if os.path.exists(LEADERBOARD_PATH):
+        with open(LEADERBOARD_PATH, 'r') as f: leaderboard = json.load(f)
+        data = [{"Model": k, **v} for k, v in leaderboard.items()]
+        df = pd.DataFrame(data).sort_values("accuracy", ascending=False)
+        
+        for i, row in df.iterrows():
+            st.markdown(f"### 🤖 {row['Model']}")
+            cols = st.columns(5)
+            def mbox(lbl, val): return f"""<div class="metric-card"><div class="metric-label">{lbl}</div><div class="metric-value">{val}</div></div>"""
+            cols[0].markdown(mbox("Accuracy", f"{row['accuracy']:.1%}"), unsafe_allow_html=True)
+            cols[1].markdown(mbox("Precision", f"{row['precision']:.1%}"), unsafe_allow_html=True)
+            cols[2].markdown(mbox("Recall", f"{row['recall']:.1%}"), unsafe_allow_html=True)
+            cols[3].markdown(mbox("F1 Score", f"{row['f1_score']:.1%}"), unsafe_allow_html=True)
+            cols[4].markdown(mbox("AUC", f"{row['auc']:.3f}"), unsafe_allow_html=True)
+    else:
+        st.info("Leaderboard JSON not available (Kaggle pipeline saves models directly). Check logs for performance.")
 
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
