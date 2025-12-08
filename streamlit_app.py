@@ -62,6 +62,20 @@ st.markdown("""
         0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 50%; }
         100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
     }
+    /* Title Glow Animation */
+@keyframes neon-glow {
+    0%, 100% { 
+        text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
+        color: #fff;
+    }
+    50% { 
+        text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; 
+        color: #ddd;
+    }
+}
+.glowing-text {
+    animation: neon-glow 4s ease-in-out infinite alternate;
+}
 
     /* UI ELEMENTS */
     .block-container { z-index: 10; position: relative; }
@@ -138,9 +152,13 @@ def go_to(p):
 
 
 def home_page():
+    def home_page():
     # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    st.markdown("<h1 style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    
+    # Title with the new glowing animation class
+    st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -161,9 +179,7 @@ def home_page():
     with col5:
         # THE DEFINITIVE BUTTON FIX
         if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
-            go_to("Predict") # Calls the function that sets state AND forces rerun
-
-
+            go_to("Predict")
 def predict_page():
     st.title("🔮 Lapse Risk Predictor")
 
