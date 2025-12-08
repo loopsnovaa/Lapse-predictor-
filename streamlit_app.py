@@ -80,22 +80,30 @@ st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><l
 # ---------------------------------------------------------
 # 3. DATA LOADING
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# 3. DATA LOADING (FINAL CORRECT STRUCTURE)
+# ---------------------------------------------------------
+@st.cache_resource
+def load_artifacts():
+    """Loads model, scaler, and feature list safely."""
+    try:
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        feature_order = joblib.load(FEATURE_PATH)
+        return model, scaler, feature_order
+    except:
+        return None, None, []
+
 def get_leaderboard():
+    """Loads leaderboard JSON data without caching."""
     if not os.path.exists(LEADERBOARD_PATH): return None
     try:
-        # Using a fresh read without Streamlit's cache
         with open(LEADERBOARD_PATH, 'r') as f: 
             return json.load(f)
     except: 
         return None
-@st.cache_data
-def get_leaderboard():
-    if not os.path.exists(LEADERBOARD_PATH): return None
-    try:
-        with open(LEADERBOARD_PATH, 'r') as f: return json.load(f)
-    except: return None
 
-# ADD THIS LINE BACK:
+# THIS LINE IS CRUCIAL AND MUST BE PLACED AFTER THE FUNCTION DEFINITIONS
 model, scaler, feature_order = load_artifacts()
 # ---------------------------------------------------------
 # 4. PREDICTION LOGIC
