@@ -3,6 +3,7 @@ import numpy as np
 import joblib
 import json
 import os
+import sys
 import logging
 from flask import Flask, request, jsonify
 
@@ -20,6 +21,18 @@ SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
 FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib") # Updated
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
+# --- PATHS (Absolute for Stability) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Navigate up from src/api to root, then into src/ to find modules if needed
+ROOT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
+sys.path.append(os.path.join(ROOT_DIR, 'src'))
+
+# Define Model Paths (Pointing to the NEW Kaggle models)
+MODEL_PATH = os.path.join(ROOT_DIR, "models", "kaggle_ensemble_model.joblib")
+PREPROCESSOR_PATH = os.path.join(ROOT_DIR, "models", "kaggle_preprocessor.joblib")
+LEADERBOARD_PATH = os.path.join(ROOT_DIR, "models", "leaderboard.json")
+
+
 # Global Artifacts
 artifacts = {
     "model": None,
@@ -34,12 +47,23 @@ def load_artifacts():
     logger.info("Loading model artifacts...")
     
     try:
+
         # 1. Load Model
+
+        # 1. Force import custom class so joblib doesn't fail
+        try:
+            from src.models.ensemble import ChurnEnsembleModel
+        except ImportError:
+            pass 
+
+        # 2. Load Model
+
         if os.path.exists(MODEL_PATH):
             artifacts["model"] = joblib.load(MODEL_PATH)
             logger.info(f"✓ Model loaded from {MODEL_PATH}")
         else:
             logger.error(f"❌ Model not found at {MODEL_PATH}. Run train_full.py first!")
+
 
         # 2. Load Scaler
         if os.path.exists(SCALER_PATH):
@@ -57,6 +81,29 @@ def load_artifacts():
                 artifacts["leaderboard"] = json.load(f)
             logger.info(f"✓ Leaderboard loaded")
 
+        # 3. Load Preprocessor (Scaler + Features)
+        if os.path.exists(PREPROCESSOR_PATH):
+            preprocessor_data = joblib.load(PREPROCESSOR_PATH)
+            
+            # Handle Preprocessor format (Dict vs Object)
+            if isinstance(preprocessor_data, dict):
+                artifacts["scaler"] = preprocessor_data.get('scaler')
+                artifacts["features"] = preprocessor_data.get('feature_names', [])
+            else:
+                artifacts["scaler"] = preprocessor_data.scaler
+                artifacts["features"] = preprocessor_data.feature_names
+                
+            logger.info(f"✓ Preprocessor loaded (Features: {len(artifacts['features'])})")
+        else:
+            logger.error(f"❌ Preprocessor not found at {PREPROCESSOR_PATH}")
+
+        # 4. Load Leaderboard (Optional)
+        if os.path.exists(LEADERBOARD_PATH):
+            with open(LEADERBOARD_PATH, 'r') as f:
+                artifacts["leaderboard"] = json.load(f)
+            logger.info("✓ Leaderboard loaded")
+
+
     except Exception as e:
         logger.error(f"❌ Critical Error loading artifacts: {e}")
 
@@ -67,6 +114,7 @@ load_artifacts()
 
 @app.route('/', methods=['GET'])
 def index():
+
     return jsonify({
         "service": "ChurnAlyse AI API",
         "status": "active",
@@ -83,6 +131,42 @@ def predict():
     if not artifacts["model"] or not artifacts["scaler"] or not artifacts["features"]:
         return jsonify({"error": "Model artifacts not loaded. Check server logs."}), 503
 
+    """Root endpoint."""
+    return jsonify({
+        "service": "ChurnAlyse AI API",
+        "status": "active",
+        "model_loaded": artifacts["model"] is not None
+    })
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check."""
+    model_status = artifacts["model"] is not None
+    return jsonify({
+        "status": "healthy" if model_status else "degraded",
+        "artifacts": {
+            "model": model_status,
+            "preprocessor": artifacts["scaler"] is not None
+        }
+    }), 200 if model_status else 503
+
+@app.route('/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Returns metrics."""
+    if artifacts["leaderboard"]:
+        return jsonify(artifacts["leaderboard"])
+    return jsonify({"error": "Leaderboard data not available."}), 404
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    """
+    Main inference endpoint.
+    """
+    # 1. Validation
+    if not artifacts["model"] or not artifacts["scaler"]:
+        return jsonify({"error": "Model artifacts not loaded."}), 503
+
+
     try:
         # 2. Parse Input
         data = request.get_json()
@@ -96,6 +180,7 @@ def predict():
             df = pd.DataFrame(data)
 
         # 3. Preprocessing (Align with Training Schema)
+
         # Ensure all training features exist, fill missing with 0
         model_features = artifacts["features"]
         
@@ -106,13 +191,23 @@ def predict():
         # Sort columns strictly by training order
         df_sorted = df[model_features]
         
+
+        final_df = pd.DataFrame()
+        for col in artifacts["features"]:
+            if col in df.columns:
+                final_df[col] = df[col]
+            else:
+                final_df[col] = 0.0 # Missing features get 0
+
         # Scale
-        X_scaled = artifacts["scaler"].transform(df_sorted)
+        X_scaled = artifacts["scaler"].transform(final_df)
         
         # 4. Inference
         predictions = artifacts["model"].predict(X_scaled)
         
+
         # Get Probabilities
+
         try:
             probabilities = artifacts["model"].predict_proba(X_scaled)[:, 1]
         except:
@@ -135,9 +230,18 @@ def predict():
                 else:
                     reason = "High Lapse Probability detected by AI."
 
+            risk_level = "High" if prob > 0.5 else "Low"
+            
+            # Simple explanation logic
+            reason = "Stable metrics."
+            if is_lapse == 1:
+                reason = "High probability of lapse based on historical patterns."
+
+
             results.append({
                 "prediction": "LAPSE" if is_lapse == 1 else "RETAIN",
                 "risk_probability": round(prob, 4),
+                "risk_level": risk_level,
                 "primary_driver": reason
             })
 
