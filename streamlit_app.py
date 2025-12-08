@@ -17,24 +17,22 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# 2. ABSOLUTE PATH SETUP (Fixes "Model Missing" Error)
+# 2. PATHS & SETUP
 # ---------------------------------------------------------
-# This finds the folder where this script lives
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Use absolute paths to find the Kaggle models you just generated
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(BASE_DIR, 'src'))
 
-# Define paths relative to the script location
-MODEL_PATH = os.path.join(CURRENT_DIR, "models", "kaggle_ensemble_model.joblib")
-PREPROCESSOR_PATH = os.path.join(CURRENT_DIR, "models", "kaggle_preprocessor.joblib")
-
-# Add src folder to Python path so it can find your modules
-sys.path.append(os.path.join(CURRENT_DIR, 'src'))
+# CRITICAL: Point to the NEW Kaggle models
+MODEL_PATH = os.path.join(BASE_DIR, "models", "kaggle_ensemble_model.joblib")
+PREPROCESSOR_PATH = os.path.join(BASE_DIR, "models", "kaggle_preprocessor.joblib")
 
 # ---------------------------------------------------------
-# 3. CSS & ANIMATION (Your Exact Green/Circles Design)
+# 3. CSS (EXACT GREEN STYLE FROM YOUR SCREENSHOT)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 1. APP BACKGROUND - Dark Blue Gradient */
+    /* 1. APP BACKGROUND */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
         color: white;
@@ -46,7 +44,7 @@ st.markdown("""
         border-right: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* 2. FLOATING CIRCLES ANIMATION */
+    /* 2. FLOATING CIRCLES (Bokeh Effect) */
     .circles {
         position: fixed;
         top: 0;
@@ -54,10 +52,9 @@ st.markdown("""
         width: 100%;
         height: 100%;
         overflow: hidden;
-        z-index: 0;
+        z-index: 0; /* Behind Content */
         pointer-events: none;
     }
-
     .circles li {
         position: absolute;
         display: block;
@@ -69,8 +66,7 @@ st.markdown("""
         bottom: -150px;
         border-radius: 50%;
     }
-
-    /* RANDOMIZE POSITIONS */
+    /* Randomize Particles */
     .circles li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
     .circles li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
     .circles li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
@@ -87,41 +83,35 @@ st.markdown("""
         100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
     }
 
-    /* 3. Z-INDEX FIX */
-    .block-container {
-        z-index: 10 !important;
-        position: relative;
-        background: transparent;
-    }
-
-    /* 4. BUTTON STYLING (Green) */
+    /* 3. BUTTON STYLING (From Image: #b2f7b1) */
     .stButton>button {
-        background-color: #2ecc71 !important;
-        color: white !important;
-        border-radius: 8px;
+        background-color: #b2f7b1 !important;
+        color: black !important;
+        border-radius: 10px;
         border: none;
-        padding: 10px 24px;
-        font-size: 16px;
-        font-weight: 600;
+        padding: 10px 25px; 
+        font-size: 18px; 
+        font-weight: 600; 
+        width: 100%;
         transition: all 0.3s ease;
     }
     .stButton>button:hover { 
-        background-color: #27ae60 !important; 
+        background-color: #A0E15E !important; 
         transform: scale(1.02);
     }
 
-    /* 5. METRIC CARD STYLING (Glass) */
+    /* 4. METRIC CARD STYLING (From Image) */
     .metric-card {
-        background-color: rgba(255, 255, 255, 0.05); 
+        background-color: rgba(255, 255, 255, 0.1); 
         padding: 20px; 
         border-radius: 12px; 
-        border: 1px solid rgba(255,255,255,0.1); 
+        border: 1px solid rgba(255,255,255,0.2); 
         margin-bottom: 15px;
         backdrop-filter: blur(10px);
     }
     .metric-label {
         font-size: 14px;
-        color: #2ecc71 !important;
+        color: #A0E15E !important;
         margin-bottom: 5px;
         font-weight: 500;
         text-transform: uppercase;
@@ -134,6 +124,13 @@ st.markdown("""
         margin: 0;
     }
     
+    /* 5. Z-INDEX FIX (Fixes Blank Screen) */
+    .block-container {
+        z-index: 10 !important;
+        position: relative;
+        background: transparent;
+    }
+    
     /* 6. INPUT FIELDS */
     .stTextInput>div>div>input, .stNumberInput>div>div>input {
         background-color: #0b1e33 !important; 
@@ -144,7 +141,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 4. INJECT ANIMATION HTML
+# 4. INJECT HTML ANIMATION
 # ---------------------------------------------------------
 st.markdown("""
     <ul class="circles">
@@ -154,24 +151,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 5. DATA LOADING
+# 5. DATA LOADING (SAFE & ROBUST)
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
-    # Attempt to load custom class logic
     try:
-        from models.ensemble import ChurnEnsembleModel
-    except ImportError:
-        pass 
+        # Import custom class so joblib knows what 'ChurnEnsembleModel' is
+        try: from models.ensemble import ChurnEnsembleModel
+        except: pass
 
-    if not os.path.exists(MODEL_PATH):
-        return None, None, f"File not found: {MODEL_PATH}"
+        if not os.path.exists(MODEL_PATH) or not os.path.exists(PREPROCESSOR_PATH):
+            return None, None, f"Missing files. Expected at: {MODEL_PATH}"
     
-    try:
         model = joblib.load(MODEL_PATH)
         preprocessor_data = joblib.load(PREPROCESSOR_PATH)
         
-        # Handle dict format
+        # Handle format difference
         if isinstance(preprocessor_data, dict):
             scaler = preprocessor_data.get('scaler')
             feature_order = preprocessor_data.get('feature_names', [])
@@ -180,50 +175,46 @@ def load_artifacts():
             feature_order = preprocessor_data.feature_names
             
         return model, scaler, feature_order
-        
     except Exception as e:
         return None, None, str(e)
 
 model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
-# 6. LOGIC
+# 6. LOGIC (FIXES SHAPE MISMATCH)
 # ---------------------------------------------------------
 def make_prediction(payload):
-    # Error checking
-    if isinstance(feature_order, str) or model is None: 
-        return None
-        
+    if isinstance(feature_order, str): return None
+    
     try:
+        # 1. Create DataFrame from inputs
         df = pd.DataFrame([payload])
-        final_df = pd.DataFrame()
         
-        # Fill missing features with 0 to match training shape
+        # 2. ALIGN FEATURES (Crucial Step)
+        # We create a new DF with exactly the columns the model expects (38 of them)
+        # and fill the ones we didn't ask for in the UI with 0.0
+        final_df = pd.DataFrame()
         for col in feature_order:
             if col in df.columns:
                 final_df[col] = df[col]
             else:
-                final_df[col] = 0.0
+                final_df[col] = 0.0 
         
-        # Scale
+        # 3. Scale & Predict
         X_scaled = scaler.transform(final_df)
-        
-        # Predict
         pred = model.predict(X_scaled)[0]
+        
+        # Handle probabilities
         try: prob = model.predict_proba(X_scaled)[0][1]
         except: prob = 1.0 if pred == 1 else 0.0
         
-        reason = "Stable metrics"
-        if prob > 0.5:
-            reason = "High Lapse Probability Detected"
-            
-        return {"prediction": "LAPSE" if pred == 1 else "RETAIN", "confidence_score": prob, "primary_driver": reason}
+        return {"risk": "High" if pred == 1 else "Low", "score": prob}
     except Exception as e:
         st.error(f"Prediction Error: {e}")
         return None
 
 # ---------------------------------------------------------
-# 7. PAGES
+# 7. UI PAGES
 # ---------------------------------------------------------
 if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
@@ -235,17 +226,15 @@ def home_page():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Status Bar - Only shows Green if model loads successfully
     if model:
+        # Green Pill (System Ready)
         st.markdown(f"""
-        <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 15px; border-radius: 8px; display: inline-block;">
-            <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded (Embedded)</span>
+        <div style="background: rgba(178, 247, 177, 0.2); border: 1px solid #b2f7b1; padding: 12px 25px; border-radius: 50px; display: inline-block;">
+            <span style="color: #b2f7b1; font-weight: bold; font-size: 16px;">● ML Engine Loaded (Embedded)</span>
         </div>
         """, unsafe_allow_html=True)
     else:
-        # Error state matches your "Models Missing" screenshot but keeps the background
-        st.error(f"🔴 Models Missing: {feature_order}")
-        st.info("Run 'python integrate_kaggle_dataset.py' to generate the files.")
+        st.error(f"🔴 {feature_order}") # Show specific loading error
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     
@@ -262,38 +251,48 @@ def predict_page():
     c1, c2 = st.columns([1, 1.3])
     with c1:
         with st.form("risk_form"):
-            st.caption("Agency Metrics")
-            ret = st.number_input("Retained Qty", 0, 5000, 90)
-            prev = st.number_input("Prev. Qty", 0, 5000, 100)
-            loss = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
-            loss3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
-            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
-            curr = st.number_input("Curr. Qty", 0, 5000, 90)
-            st.caption("Context")
-            prem = st.number_input("Premium", 0, 100000, 3500)
+            st.caption("Policy Inputs")
+            # Inputs match Kaggle features
+            p_amt = st.number_input("Policy Amount", 0, 1000000, 50000)
+            prem = st.number_input("Premium", 0, 50000, 1000)
+            tenure = st.number_input("Tenure (Months)", 0, 360, 24)
+            credit = st.number_input("Credit Score", 300, 850, 700)
+            age = st.number_input("Age", 18, 90, 35)
+            
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        payload = {"RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev, "POLY_INFORCE_QTY": curr,
-                   "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth}
+        # Create payload with simulated extra features
+        payload = {
+            "policy_amount": p_amt, 
+            "premium_amount": prem,
+            "policy_tenure_months": tenure, 
+            "credit_score": credit,
+            "age": age,
+            # Calculated features the model might expect
+            "income": p_amt * 0.1, 
+            "premium_to_tenure_ratio": prem / (tenure + 1)
+        }
+        
         res = make_prediction(payload)
         
         with c2:
             if res:
-                risk = "High" if res['prediction'] == "LAPSE" else "Low"
+                risk = res['risk']
                 color = "#ef4444" if risk == "High" else "#2ecc71"
                 
+                # HTML Result Card
                 st.markdown(f"""
                 <div class="metric-card" style="border-left: 8px solid {color}; align-items: flex-start; text-align: left; padding-left: 30px;">
                     <h3 style="color:{color}; margin:0; font-size: 24px;">RISK LEVEL: {risk.upper()}</h3>
-                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['confidence_score']:.1%}</h1>
-                    <p style="opacity: 0.8; font-size: 16px;">{res['primary_driver']}</p>
+                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}</h1>
+                    <p style="opacity: 0.8; font-size: 16px;">Based on ensemble prediction</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 # Radar Chart
-                categories = ['Retention Gap', 'Loss Risk', 'Growth Lag']
-                vals = [max(0,(prev-ret)/prev) if prev>0 else 0, min(1, loss/150), 1 if growth<0 else 0.2]
+                categories = ['Premium Risk', 'Tenure Risk', 'Credit Risk']
+                vals = [min(1, prem/5000), max(0, 1-(tenure/60)), max(0, 1-(credit/850))]
                 fig = go.Figure(go.Scatterpolar(r=vals, theta=categories, fill='toself', line_color=color))
                 fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", 
                                   font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40), height=300)
@@ -303,8 +302,7 @@ def performance_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
     st.title("🏆 Model Leaderboard")
-    
-    st.info("Leaderboard metrics are available in the training logs.")
+    st.info("Check training logs for detailed metrics.")
 
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
