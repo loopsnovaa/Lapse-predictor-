@@ -78,7 +78,7 @@ st.markdown("""
 st.markdown('<ul class="circles"><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li><li></li></ul>', unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 3. DATA LOADING (Uses correct paths)
+# 3. DATA LOADING
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
@@ -100,7 +100,7 @@ def get_leaderboard():
 model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
-# 4. PREDICTION LOGIC (Ensures 11 inputs are processed)
+# 4. PREDICTION LOGIC
 # ---------------------------------------------------------
 def make_prediction(payload):
     if not model or not scaler: return None
@@ -124,11 +124,8 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # 5. PAGES
 # ---------------------------------------------------------
-
 # Navigation state management
 if "page" not in st.session_state: st.session_state.page = "home"
-
-# FINAL FIXED GO_TO FUNCTION
 def go_to(p):
     st.session_state.page = p
     st.rerun() 
@@ -230,6 +227,7 @@ def predict_page():
                 fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
                 st.plotly_chart(fig, use_container_width=True)
 
+
 def performance_page():
     st.title("🏆 Model Performance Leaderboard")
     
@@ -242,31 +240,22 @@ def performance_page():
 
     st.markdown("---")
 
-    # Iterate through all models in the JSON data
-    # This loop will display the 5 metrics for every model present in the file (assumed to be 5)
-    
     for model_name, metrics in data.items():
         
-        # Display Model Name
         st.markdown(f"### {model_name}")
         
-        # Create 5 columns for the 5 metrics
         cols = st.columns(5)
         
-        # Define the 5 metrics and their keys in the JSON
         metric_keys = ["accuracy", "precision", "recall", "f1_score", "auc"]
         
         for i, key in enumerate(metric_keys):
-            # Fetch the value, defaulting to 0 if missing (should not happen if train_full.py ran)
             value = metrics.get(key, 0.0)
             
-            # Format value for display
             if key == "accuracy":
                 display_value = f"{value:.2%}"
             else:
                 display_value = f"{value:.3f}"
             
-            # Use custom markdown/metric to display card style
             with cols[i]:
                 st.markdown(f"""
                 <div class="metric-card" style="text-align: center; padding: 10px;">
@@ -275,7 +264,9 @@ def performance_page():
                 </div>
                 """, unsafe_allow_html=True)
                 
-        st.markdown("---") # Separator between models
+        st.markdown("---")
+
+
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
@@ -285,7 +276,7 @@ def main():
     if st.session_state.page in ("home", "Home"):
         # Hide sidebar completely on the homepage
         st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
-
+    
     # 2. Render Sidebar Navigation for other pages
     else:
         with st.sidebar:
