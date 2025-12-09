@@ -5,24 +5,18 @@ import numpy as np
 import joblib
 import os
 import json
-
-# ---------------------------------------------------------
-# 1. SETUP & CONFIGURATION
-# ---------------------------------------------------------
 st.set_page_config(
     page_title="ChurnAlyse AI", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
-# Constants
 MODEL_DIR = "models"
 MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")  # FIXED PATH
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
 FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
-# CSS Styling
 st.markdown("""
 <style>
     [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
@@ -43,9 +37,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 2. DATA LOADING
-# ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
     if not os.path.exists(MODEL_PATH):
@@ -68,28 +59,18 @@ def get_leaderboard():
 
 model, scaler, feature_names = load_artifacts()
 
-# ---------------------------------------------------------
-# 3. PREDICTION ENGINE
-# ---------------------------------------------------------
 def predict_churn(payload):
     if not model or not scaler: return None, 0.0
 
-    # Create DF and match exact training columns
     df = pd.DataFrame([payload])
-    
-    # Ensure correct column order
     df = df[feature_names]
     
-    # Scale & Predict
     X_scaled = scaler.transform(df)
     pred_class = model.predict(X_scaled)[0]
     pred_prob = model.predict_proba(X_scaled)[0][1]
 
     return pred_class, pred_prob
 
-# ---------------------------------------------------------
-# 4. PAGE: PREDICT
-# ---------------------------------------------------------
 def page_predict():
     st.title("🛡️ Policy Lapse Risk Predictor")
     
@@ -127,7 +108,6 @@ def page_predict():
         btn = st.button("🚀 Analyze Risk")
 
     if btn:
-        # Construct payload with ALL 10 FEATURES
         payload = {
             "AGE": age,
             "PREMIUM": premium,
@@ -156,9 +136,8 @@ def page_predict():
             </div>
             """, unsafe_allow_html=True)
             
-            # Radar Chart
             categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
-            # Normalize for visualization
+
             ret_gap = max(0, (prev_qty - ret_qty) / prev_qty)
             loss_norm = min(1, loss_r / 100.0)
             growth_inv = min(1, max(0, (10 - growth)/20))
@@ -187,9 +166,6 @@ def page_predict():
             else:
                 st.success("✅ **Good Standing:** Policy is stable.")
 
-# ---------------------------------------------------------
-# 5. PAGE: LEADERBOARD
-# ---------------------------------------------------------
 def page_performance():
     st.title("🏆 Model Leaderboard")
     data = get_leaderboard()
@@ -211,9 +187,6 @@ def page_performance():
 
     st.dataframe(df.style.highlight_max(axis=0, color='#A0E15E'), use_container_width=True)
 
-# ---------------------------------------------------------
-# 6. MAIN APP
-# ---------------------------------------------------------
 def main():
     with st.sidebar:
         st.title("ChurnAlyse")
