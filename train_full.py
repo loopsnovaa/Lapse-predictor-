@@ -6,7 +6,6 @@ import sys
 import json
 import warnings
 
-# Sklearn & Imblearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -21,14 +20,12 @@ from imblearn.combine import SMOTEENN
 
 warnings.filterwarnings("ignore")
 
-# --- CONFIGURATION ---
 DATA_PATH = "data/finalapi.csv"
 LEADERBOARD_PATH = "models/leaderboard.json"
-FEATURE_ORDER_PATH = "models/feature_names.joblib" # Consistent naming
+FEATURE_ORDER_PATH = "models/feature_names.joblib" 
 SCALER_PATH = "models/scaler_new.joblib"
 MODEL_PATH = "models/best_model.joblib" 
 
-# THE 5 FEATURES THAT GUARANTEE THE 99% ACCURACY (Includes the leakage feature)
 FEATURES = [
     "RETENTION_POLY_QTY", 
     "PREV_POLY_INFORCE_QTY", 
@@ -63,11 +60,9 @@ def load_insurance_data(path: str) -> pd.DataFrame:
 def preprocess_data(df: pd.DataFrame):
     print("Pre-processing data...")
     
-    # CRITICAL FIX: Clean NaNs and Infinites
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df.fillna(0, inplace=True) 
     
-    # Target engineering (Lapse occurs if Retained < Previous)
     df = df.dropna(subset=["RETENTION_POLY_QTY", "PREV_POLY_INFORCE_QTY"]).copy()
     df['policy_lapse'] = (df['RETENTION_POLY_QTY'] < df['PREV_POLY_INFORCE_QTY']).astype(int)
     df = df[df['PREV_POLY_INFORCE_QTY'] > 0].copy()
@@ -108,7 +103,6 @@ def train_and_evaluate():
     X_train, X_test, y_train, y_test = preprocess_data(df)
     X_train_bal, y_train_bal = balance_data(X_train, y_train)
 
-    # All 5 Models Defined
     models = {
         "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
         "Decision Tree": DecisionTreeClassifier(max_depth=10, random_state=42),
@@ -154,7 +148,6 @@ def train_and_evaluate():
             print(f"Error training {name}: {e}. Skipping.")
             leaderboard[name] = {"error": str(e), "accuracy": 0.0}
 
-    # 3. Save
     with open(LEADERBOARD_PATH, 'w') as f:
         json.dump(leaderboard, f, indent=4)
         
