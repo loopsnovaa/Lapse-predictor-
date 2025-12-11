@@ -126,6 +126,9 @@ def home_page():
             background-image: none !important; 
             color: #f2f2f2;
         }
+        header[data-testid="stHeader"] {
+            background-color: #111 !important;
+        }
         
         /* The container for the lines */
         .lines {
