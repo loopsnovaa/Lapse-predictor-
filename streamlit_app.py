@@ -118,20 +118,18 @@ def go_to(p):
 
 def home_page():
     # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
-    # We apply the specific CSS you provided here.
-    # We target stAppViewContainer to override the global background.
     st.markdown("""
     <style>
         /* Override global background for homepage */
         [data-testid="stAppViewContainer"] {
             background-color: #111 !important; 
-            background-image: none !important; /* Remove global gradient */
+            background-image: none !important; 
             color: #f2f2f2;
         }
         
         /* The container for the lines */
         .lines {
-            position: fixed; /* Fixed to cover screen */
+            position: fixed; 
             top: 0;
             left: 0;
             right: 0;
@@ -140,15 +138,16 @@ def home_page():
             width: 90vw;
             display: flex;
             justify-content: space-between;
-            z-index: 0; /* Sit behind content */
-            pointer-events: none; /* Allow clicks to pass through */
+            z-index: 0; 
+            pointer-events: none; 
         }
 
         .line {
             position: relative;
             width: 1px;
             height: 100%;
-            background: rgba(255, 255, 255, 0.1);
+            /* REMOVED THE BACKGROUND COLOR HERE TO FIX THE WHITE LINES */
+            background: transparent; 
             overflow: hidden;
         }
 
