@@ -146,7 +146,7 @@ def home_page():
             position: relative;
             width: 1px;
             height: 100%;
-            background: transparent; /* No white line background */
+            background: transparent; 
             overflow: hidden;
         }
 
@@ -160,7 +160,7 @@ def home_page():
             left: 0;
             background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
             /* SPEED UP: Changed from 7s to 1.5s */
-            animation: drop 1.5s 0s infinite;
+            animation: drop 0.5s 0s infinite;
             animation-fill-mode: forwards;
             animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
         }
