@@ -30,15 +30,26 @@ LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* DEFAULT APP BACKGROUND (Overridden per page) */
+    /* 1. Global Background Settings */
     [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
-        color: white;
-        overflow-x: hidden;
+        background-color: black;
+        background-image: none;
     }
+    
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+    }
+
     [data-testid="stSidebar"] {
         background-color: #0b1e33;
         border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* 2. Transparent Content Container so particles show through */
+    .block-container {
+        background-color: transparent !important;
+        z-index: 10; /* Content sits above particles */
+        position: relative;
     }
 
     /* Title Glow Animation */
@@ -57,9 +68,6 @@ st.markdown("""
     }
     
     /* UI ELEMENTS */
-    /* Z-INDEX FIX: Ensure content sits above the particle background */
-    .block-container { z-index: 1; position: relative; }
-    
     .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
     .stButton>button:hover { transform: scale(1.02); }
     .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
@@ -82,15 +90,14 @@ def get_particle_bg_html():
     total = 300
     orb_size = 100
     time = 14
-    base_hue = 0 # 0 is Red/Orangeish. Change to 180 for Cyan/Blue.
+    base_hue = 0 
     
     # CSS Part
     css = f"""
     <style>
-    /* Force Black Background on these pages */
+    /* Specific overrides for Particle Pages */
     [data-testid="stAppViewContainer"] {{
         background: black !important;
-        background-image: none !important;
     }}
     
     /* The 3D Wrapper */
@@ -103,7 +110,7 @@ def get_particle_bg_html():
         transform-style: preserve-3d;
         perspective: 1000px;
         animation: rotate {time}s infinite linear;
-        z-index: 0; /* Behind content but in front of background color */
+        z-index: 1; /* Sits just above background, below content */
         pointer-events: none;
     }}
     
@@ -113,22 +120,26 @@ def get_particle_bg_html():
     
     .c {{
         position: absolute;
-        width: 2px;
-        height: 2px;
+        width: 3px; /* Slightly larger for visibility */
+        height: 3px;
         border-radius: 50%;
         opacity: 0; 
     }}
+    </style>
     """
     
     # Generate Keyframes for 300 particles
     rng = random.Random(42) 
+    
+    # Prepare the animation keyframes in a single block to reduce overhead
+    keyframe_styles = ""
     
     for i in range(1, total + 1):
         z = rng.randint(0, 360)
         y = rng.randint(0, 360)
         hue = ((40 / total * i) + base_hue)
         
-        css += f"""
+        keyframe_styles += f"""
         .c:nth-child({i}) {{
             animation: orbit{i} {time}s infinite;
             animation-delay: {i * 0.01}s; 
@@ -142,13 +153,14 @@ def get_particle_bg_html():
         }}
         """
     
-    css += "</style>"
+    # Combine everything
+    full_css = css + "<style>" + keyframe_styles + "</style>"
     
     # HTML Part
     particles = "".join(['<div class="c"></div>' for _ in range(total)])
     html = f'<div class="wrap">{particles}</div>'
     
-    return css + html
+    return full_css + html
 
 def inject_particle_background():
     bg_code = get_particle_bg_html()
@@ -212,9 +224,7 @@ def home_page():
             background-image: none !important; 
             color: #f2f2f2;
         }
-        header[data-testid="stHeader"] {
-            background-color: #111 !important;
-        }
+        /* Ensure lines are visible behind content */
         .lines {
             position: fixed; top: 0; left: 0; right: 0; height: 100%; margin: auto; width: 90vw;
             display: flex; justify-content: space-between; z-index: 0; pointer-events: none; 
