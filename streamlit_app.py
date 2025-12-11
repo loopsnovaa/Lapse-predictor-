@@ -25,11 +25,11 @@ FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 2. CUSTOM CSS & ANIMATION
+# 2. CUSTOM CSS & ANIMATION (GLOBAL)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* APP BACKGROUND */
+    /* DEFAULT APP BACKGROUND (Overridden on Homepage) */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
         color: white;
@@ -41,23 +41,20 @@ st.markdown("""
     }
 
     /* Title Glow Animation */
-@keyframes neon-glow {
-    0%, 100% { 
-        text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
-        color: #fff;
+    @keyframes neon-glow {
+        0%, 100% { 
+            text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
+            color: #fff;
+        }
+        50% { 
+            text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; 
+            color: #ddd;
+        }
     }
-    50% { 
-        text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; 
-        color: #ddd;
+    .glowing-text {
+        animation: neon-glow 4s ease-in-out infinite alternate;
     }
-}
-.glowing-text {
-    animation: neon-glow 4s ease-in-out infinite alternate;
-}
     
-    
-    
-   
     /* UI ELEMENTS */
     .block-container { z-index: 10; position: relative; }
     .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
@@ -73,9 +70,6 @@ st.markdown("""
 
 # ---------------------------------------------------------
 # 3. DATA LOADING
-# ---------------------------------------------------------
-# ---------------------------------------------------------
-# 3. DATA LOADING (FINAL CORRECT STRUCTURE)
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
@@ -97,8 +91,9 @@ def get_leaderboard():
     except: 
         return None
 
-# THIS LINE IS CRUCIAL AND MUST BE PLACED AFTER THE FUNCTION DEFINITIONS
+# Load artifacts
 model, scaler, feature_order = load_artifacts()
+
 # ---------------------------------------------------------
 # 4. PREDICTION LOGIC
 # ---------------------------------------------------------
@@ -130,8 +125,24 @@ def go_to(p):
     st.session_state.page = p
     st.rerun() 
 
-
 def home_page():
+    # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(132deg, #000000,#00ff00, #0000ff,#e60073,#ff0000,#ffffff);
+        background-size: 400% 400%;
+        animation: BackgroundGradient 15s ease infinite;
+    }
+    
+    @keyframes BackgroundGradient {
+        0% {background-position: 0% 50%;}
+        50% {background-position: 100% 50%;}
+        100% {background-position: 0% 50%;}
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
@@ -159,6 +170,7 @@ def home_page():
         # THE DEFINITIVE BUTTON FIX
         if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
             go_to("Predict")
+
 def predict_page():
     st.title("🔮 Lapse Risk Predictor")
 
@@ -227,7 +239,6 @@ def predict_page():
                 fig.add_trace(go.Scatterpolar(r=[ret_gap, loss_norm, growth_inv], theta=categories, fill='toself', name='Current Policy', line_color=color))
                 fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
                 st.plotly_chart(fig, use_container_width=True)
-
 
 def performance_page():
     st.title("🏆 Model Performance Leaderboard")
