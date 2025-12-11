@@ -26,33 +26,38 @@ FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 2. CUSTOM CSS & ANIMATION (GLOBAL)
+# 2. GLOBAL CSS (THE FIX)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 1. Global Background Settings */
+    /* 1. FORCE ROOT BACKGROUND TO BLACK */
+    body {
+        background-color: #000000 !important;
+    }
+
+    /* 2. MAKE STREAMLIT CONTAINERS TRANSPARENT 
+       (So we can see the animation behind them) */
     [data-testid="stAppViewContainer"] {
-        background-color: black;
-        background-image: none;
+        background: transparent !important;
+        background-color: transparent !important;
     }
     
     [data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
+        background: transparent !important;
+        background-color: transparent !important;
     }
 
+    .block-container {
+        background-color: transparent !important;
+    }
+
+    /* 3. SIDEBAR STYLE */
     [data-testid="stSidebar"] {
         background-color: #0b1e33;
         border-right: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* 2. Transparent Content Container so particles show through */
-    .block-container {
-        background-color: transparent !important;
-        z-index: 10; /* Content sits above particles */
-        position: relative;
-    }
-
-    /* Title Glow Animation */
+    /* 4. TITLE GLOW ANIMATION */
     @keyframes neon-glow {
         0%, 100% { 
             text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
@@ -67,7 +72,7 @@ st.markdown("""
         animation: neon-glow 4s ease-in-out infinite alternate;
     }
     
-    /* UI ELEMENTS */
+    /* 5. UI ELEMENTS */
     .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
     .stButton>button:hover { transform: scale(1.02); }
     .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
@@ -80,27 +85,18 @@ st.markdown("""
 
 
 # ---------------------------------------------------------
-# 3. HELPER: PARTICLE BACKGROUND GENERATOR
+# 3. ANIMATION HELPERS (Z-INDEX: -1)
 # ---------------------------------------------------------
 @st.cache_resource
 def get_particle_bg_html():
-    """
-    Generates the CSS and HTML for the particle orb animation.
-    """
     total = 300
     orb_size = 100
     time = 14
     base_hue = 0 
     
-    # CSS Part
+    # We use z-index: -1 to put it BEHIND the transparent Streamlit container
     css = f"""
     <style>
-    /* Specific overrides for Particle Pages */
-    [data-testid="stAppViewContainer"] {{
-        background: black !important;
-    }}
-    
-    /* The 3D Wrapper */
     .wrap {{
         position: fixed;
         top: 50%;
@@ -110,7 +106,7 @@ def get_particle_bg_html():
         transform-style: preserve-3d;
         perspective: 1000px;
         animation: rotate {time}s infinite linear;
-        z-index: 1; /* Sits just above background, below content */
+        z-index: -1; 
         pointer-events: none;
     }}
     
@@ -120,7 +116,7 @@ def get_particle_bg_html():
     
     .c {{
         position: absolute;
-        width: 3px; /* Slightly larger for visibility */
+        width: 3px;
         height: 3px;
         border-radius: 50%;
         opacity: 0; 
@@ -128,17 +124,12 @@ def get_particle_bg_html():
     </style>
     """
     
-    # Generate Keyframes for 300 particles
     rng = random.Random(42) 
-    
-    # Prepare the animation keyframes in a single block to reduce overhead
     keyframe_styles = ""
-    
     for i in range(1, total + 1):
         z = rng.randint(0, 360)
         y = rng.randint(0, 360)
         hue = ((40 / total * i) + base_hue)
-        
         keyframe_styles += f"""
         .c:nth-child({i}) {{
             animation: orbit{i} {time}s infinite;
@@ -153,18 +144,47 @@ def get_particle_bg_html():
         }}
         """
     
-    # Combine everything
     full_css = css + "<style>" + keyframe_styles + "</style>"
-    
-    # HTML Part
     particles = "".join(['<div class="c"></div>' for _ in range(total)])
     html = f'<div class="wrap">{particles}</div>'
-    
     return full_css + html
 
 def inject_particle_background():
     bg_code = get_particle_bg_html()
     st.markdown(bg_code, unsafe_allow_html=True)
+
+
+def inject_falling_lines_bg():
+    st.markdown("""
+    <style>
+        .lines {
+            position: fixed; top: 0; left: 0; right: 0; height: 100vh; margin: auto; width: 90vw;
+            display: flex; justify-content: space-between; 
+            z-index: -1; /* BEHIND CONTENT */
+            pointer-events: none; 
+        }
+        .line { position: relative; width: 1px; height: 100%; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .line::after {
+            content: ''; display: block; position: absolute; height: 15vh; width: 100%; top: -50%; left: 0;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
+            animation: drop 1.5s 0s infinite; animation-fill-mode: forwards; animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
+        }
+        /* Specific Colors per line */
+        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
+        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
+        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
+        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 0.55s; }
+        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 0.7s; }
+        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 0.85s; }
+        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 1.0s; }
+        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 1.15s; }
+        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 1.3s; }
+        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 1.45s; }
+        
+        @keyframes drop { 0% { top: -50%; } 100% { top: 110%; } }
+    </style>
+    <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div></div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -216,41 +236,8 @@ def go_to(p):
     st.rerun() 
 
 def home_page():
-    # --- HOMEPAGE BACKGROUND (Falling Lines) ---
-    st.markdown("""
-    <style>
-        [data-testid="stAppViewContainer"] {
-            background-color: #111 !important; 
-            background-image: none !important; 
-            color: #f2f2f2;
-        }
-        /* Ensure lines are visible behind content */
-        .lines {
-            position: fixed; top: 0; left: 0; right: 0; height: 100%; margin: auto; width: 90vw;
-            display: flex; justify-content: space-between; z-index: 0; pointer-events: none; 
-        }
-        .line { position: relative; width: 1px; height: 100%; background: transparent; overflow: hidden; }
-        .line::after {
-            content: ''; display: block; position: absolute; height: 15vh; width: 100%; top: -50%; left: 0;
-            background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
-            animation: drop 1.5s 0s infinite; animation-fill-mode: forwards; animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
-        }
-        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
-        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
-        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
-        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 0.55s; }
-        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 0.7s; }
-        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 0.85s; }
-        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 1.0s; }
-        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 1.15s; }
-        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 1.3s; }
-        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 1.45s; }
-        @keyframes drop { 0% { top: -50%; } 100% { top: 110%; } }
-    </style>
-    <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div></div>
-    """, unsafe_allow_html=True)
-
-    # UI Content
+    inject_falling_lines_bg()
+    
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
@@ -269,7 +256,6 @@ def home_page():
             go_to("Predict")
 
 def predict_page():
-    # --- INJECT PARTICLE BACKGROUND ---
     inject_particle_background()
     
     st.title("🔮 Lapse Risk Predictor")
@@ -333,7 +319,6 @@ def predict_page():
                 st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
-    # --- INJECT PARTICLE BACKGROUND ---
     inject_particle_background()
 
     st.title("🏆 Model Performance Leaderboard")
