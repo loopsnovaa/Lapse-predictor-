@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Constants (Pointing to the successfully trained model)
+# Constants
 MODEL_DIR = "models"
 MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
@@ -29,7 +29,7 @@ LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* DEFAULT APP BACKGROUND (Overridden on Homepage) */
+    /* DEFAULT APP BACKGROUND */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
         color: white;
@@ -73,7 +73,6 @@ st.markdown("""
 # ---------------------------------------------------------
 @st.cache_resource
 def load_artifacts():
-    """Loads model, scaler, and feature list safely."""
     try:
         model = joblib.load(MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
@@ -83,7 +82,6 @@ def load_artifacts():
         return None, None, []
 
 def get_leaderboard():
-    """Loads leaderboard JSON data without caching."""
     if not os.path.exists(LEADERBOARD_PATH): return None
     try:
         with open(LEADERBOARD_PATH, 'r') as f: 
@@ -91,7 +89,6 @@ def get_leaderboard():
     except: 
         return None
 
-# Load artifacts
 model, scaler, feature_order = load_artifacts()
 
 # ---------------------------------------------------------
@@ -99,19 +96,14 @@ model, scaler, feature_order = load_artifacts()
 # ---------------------------------------------------------
 def make_prediction(payload):
     if not model or not scaler: return None
-        
     try:
         df = pd.DataFrame([payload])
         final_df = pd.DataFrame()
-        
-        # Align all inputs to the trained feature order
         for col in feature_order:
             final_df[col] = df[col] if col in df.columns else 0.0
-            
         X_input = scaler.transform(final_df)
         pred = model.predict(X_input)[0]
         prob = model.predict_proba(X_input)[0][1]
-        
         return {"risk": "High" if pred==1 else "Low", "score": prob}
     except:
         return None
@@ -119,7 +111,6 @@ def make_prediction(payload):
 # ---------------------------------------------------------
 # 5. PAGES
 # ---------------------------------------------------------
-# Navigation state management
 if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p):
     st.session_state.page = p
@@ -127,26 +118,90 @@ def go_to(p):
 
 def home_page():
     # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
+    # We apply the specific CSS you provided here.
+    # We target stAppViewContainer to override the global background.
     st.markdown("""
     <style>
-    [data-testid="stAppViewContainer"] {
-        background: linear-gradient(132deg, #000000,#00ff00, #0000ff,#e60073,#ff0000,#ffffff);
-        background-size: 400% 400%;
-        animation: BackgroundGradient 15s ease infinite;
-    }
-    
-    @keyframes BackgroundGradient {
-        0% {background-position: 0% 50%;}
-        50% {background-position: 100% 50%;}
-        100% {background-position: 0% 50%;}
-    }
+        /* Override global background for homepage */
+        [data-testid="stAppViewContainer"] {
+            background-color: #111 !important; 
+            background-image: none !important; /* Remove global gradient */
+            color: #f2f2f2;
+        }
+        
+        /* The container for the lines */
+        .lines {
+            position: fixed; /* Fixed to cover screen */
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            margin: auto;
+            width: 90vw;
+            display: flex;
+            justify-content: space-between;
+            z-index: 0; /* Sit behind content */
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+
+        .line {
+            position: relative;
+            width: 1px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .line::after {
+            content: '';
+            display: block;
+            position: absolute;
+            height: 15vh;
+            width: 100%;
+            top: -50%;
+            left: 0;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
+            animation: drop 7s 0s infinite;
+            animation-fill-mode: forwards;
+            animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
+        }
+
+        /* Different colors for each line's pseudo-element */
+        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.5s; }
+        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 1s; }
+        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 1.5s; }
+        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 2s; }
+        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 2.5s; }
+        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 3s; }
+        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 3.5s; }
+        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 4s; }
+        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 4.5s; }
+        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 5s; }
+
+        @keyframes drop {
+            0% { top: -50%; }
+            100% { top: 110%; }
+        }
     </style>
+    
+    <div class="lines">
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+    </div>
     """, unsafe_allow_html=True)
 
     # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
-    # Title with the new glowing animation class
+    # Title with the glowing animation
     st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
     
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
@@ -167,7 +222,6 @@ def home_page():
     st.markdown("<br>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     with col5:
-        # THE DEFINITIVE BUTTON FIX
         if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
             go_to("Predict")
 
@@ -202,16 +256,13 @@ def predict_page():
             submitted = st.form_submit_button("Analyze Risk")
             
     if submitted:
-        # Construct payload with ALL 11 FEATURES
         payload = {
             "AGE": age, "PREMIUM": prem, "TENURE": tenure,
             "AGENT_CHANNEL": int(agent_ch), "DIGITAL_CHANNEL": int(digital_ch), "BANCASSURANCE": int(banca_ch),
             "RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev,
             "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth
         }
-        
         res = make_prediction(payload)
-        
         with c2:
             if res:
                 color = "#ef4444" if res['risk'] == "High" else "#2ecc71"
@@ -222,14 +273,12 @@ def predict_page():
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Strategies
                 st.markdown("### Analysis")
                 if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
                 if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
                 st.markdown("### Strategy")
                 st.info("Offer personalized agent follow-up and premium reminders.")
                 
-                # Radar Chart
                 categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
                 ret_gap = max(0, (prev - ret) / prev) if prev > 0 else 0
                 loss_norm = min(1, loss / 100.0)
@@ -242,39 +291,25 @@ def predict_page():
 
 def performance_page():
     st.title("🏆 Model Performance Leaderboard")
-    
-    # Load the JSON data
     data = get_leaderboard()
-    
     if not data:
         st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully.")
         return
 
-    # Convert dictionary to DataFrame, sort by accuracy (highest first)
     df = pd.DataFrame.from_dict(data, orient='index')
-    
     if 'accuracy' in df.columns:
-        # Sort in descending order (highest accuracy first)
         df_sorted = df.sort_values(by='accuracy', ascending=False)
     else:
         df_sorted = df
         st.warning("Could not sort metrics as 'accuracy' column is missing.")
 
     st.markdown("---")
-
-    # Iterate through the SORTED DataFrame rows
     for model_name, metrics in df_sorted.iterrows():
-        
         st.markdown(f"### {model_name}")
-        
         cols = st.columns(5)
-        
         metric_keys = ["accuracy", "precision", "recall", "f1_score", "auc"]
-        
         for i, key in enumerate(metric_keys):
             value = metrics.get(key, 0.0)
-            
-            # Use the correct display format (percentage for accuracy, float for others)
             if key == "accuracy":
                 display_value = f"{value:.2%}"
             else:
@@ -287,20 +322,14 @@ def performance_page():
                     <h4 style="margin: 5px 0; font-size: 1.5rem; color: #2ecc71;">{display_value}</h4>
                 </div>
                 """, unsafe_allow_html=True)
-                
         st.markdown("---")
 
 # ---------------------------------------------------------
 # 6. MAIN NAVIGATION
 # ---------------------------------------------------------
 def main():
-    
-    # 1. Handle sidebar visibility based on page state
     if st.session_state.page in ("home", "Home"):
-        # Hide sidebar completely on the homepage
         st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
-    
-    # 2. Render Sidebar Navigation for other pages
     else:
         with st.sidebar:
             st.title("Navigation")
@@ -311,17 +340,15 @@ def main():
             else:
                 st.caption("🔴 No Model Found")
             
-            # Sidebar navigation action
             if page != st.session_state.page:
                 st.session_state.page = page
                 st.rerun()
 
-    # 3. Render the current page
     if st.session_state.page in ("home", "Home"):
         home_page()
     elif st.session_state.page == "Predict":
         predict_page()
-    else: # Performance
+    else: 
         performance_page()
 
 if __name__ == "__main__":
