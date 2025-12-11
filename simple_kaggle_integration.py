@@ -30,7 +30,7 @@ LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* DEFAULT APP BACKGROUND (Will be overridden per page) */
+    /* DEFAULT APP BACKGROUND (Overridden per page) */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
         color: white;
@@ -57,7 +57,9 @@ st.markdown("""
     }
     
     /* UI ELEMENTS */
-    .block-container { z-index: 10; position: relative; }
+    /* Z-INDEX FIX: Ensure content sits above the particle background */
+    .block-container { z-index: 1; position: relative; }
+    
     .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
     .stButton>button:hover { transform: scale(1.02); }
     .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
@@ -76,21 +78,22 @@ st.markdown("""
 def get_particle_bg_html():
     """
     Generates the CSS and HTML for the particle orb animation.
-    Since SCSS loops cannot run in the browser, we generate the 
-    CSS dynamically in Python.
     """
     total = 300
     orb_size = 100
     time = 14
-    base_hue = 0
+    base_hue = 0 # 0 is Red/Orangeish. Change to 180 for Cyan/Blue.
     
-    # Static CSS part
+    # CSS Part
     css = f"""
     <style>
+    /* Force Black Background on these pages */
     [data-testid="stAppViewContainer"] {{
         background: black !important;
-        overflow-x: hidden;
+        background-image: none !important;
     }}
+    
+    /* The 3D Wrapper */
     .wrap {{
         position: fixed;
         top: 50%;
@@ -100,12 +103,14 @@ def get_particle_bg_html():
         transform-style: preserve-3d;
         perspective: 1000px;
         animation: rotate {time}s infinite linear;
-        z-index: 0; /* Behind content */
-        pointer-events: none; /* Let clicks pass through */
+        z-index: 0; /* Behind content but in front of background color */
+        pointer-events: none;
     }}
+    
     @keyframes rotate {{
         100% {{ transform: rotateY(360deg) rotateX(360deg); }}
     }}
+    
     .c {{
         position: absolute;
         width: 2px;
@@ -115,8 +120,7 @@ def get_particle_bg_html():
     }}
     """
     
-    # Dynamic Loop to generate 300 unique particle animations
-    # We use a fixed seed so the animation logic doesn't change on every rerun
+    # Generate Keyframes for 300 particles
     rng = random.Random(42) 
     
     for i in range(1, total + 1):
@@ -140,7 +144,7 @@ def get_particle_bg_html():
     
     css += "</style>"
     
-    # Generate the HTML container with 300 particles
+    # HTML Part
     particles = "".join(['<div class="c"></div>' for _ in range(total)])
     html = f'<div class="wrap">{particles}</div>'
     
@@ -200,7 +204,7 @@ def go_to(p):
     st.rerun() 
 
 def home_page():
-    # --- HOMEPAGE SPECIFIC BACKGROUND CSS (Lines) ---
+    # --- HOMEPAGE BACKGROUND (Falling Lines) ---
     st.markdown("""
     <style>
         [data-testid="stAppViewContainer"] {
@@ -236,7 +240,7 @@ def home_page():
     <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div></div>
     """, unsafe_allow_html=True)
 
-    # --- RESTORED HOMEPAGE UI ---
+    # UI Content
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
@@ -248,7 +252,6 @@ def home_page():
             st.markdown("""<div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;"><span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span></div>""", unsafe_allow_html=True)
         else:
             st.error("🔴 Error: Model not found.")
-
     st.markdown("<br>", unsafe_allow_html=True)
     col4, col5, col6 = st.columns([1, 1, 1])
     with col5:
@@ -256,11 +259,10 @@ def home_page():
             go_to("Predict")
 
 def predict_page():
-    # --- INJECT PARTICLE BACKGROUND HERE ---
+    # --- INJECT PARTICLE BACKGROUND ---
     inject_particle_background()
     
     st.title("🔮 Lapse Risk Predictor")
-
     c1, c2 = st.columns([1, 1.3])
     with c1:
         with st.form("risk_form"):
@@ -280,7 +282,6 @@ def predict_page():
             p1, p2 = st.columns(2)
             ret = p1.number_input("Retained Qty", 0, 5000, 90, help="RETENTION_POLY_QTY")
             prev = p2.number_input("Previous Qty", 0, 5000, 100, help="PREV_POLY_INFORCE_QTY")
-            
             p3, p4 = st.columns(2)
             loss = p3.number_input("Loss Ratio", 0.0, 500.0, 65.0)
             loss3 = p4.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
@@ -305,7 +306,6 @@ def predict_page():
                     <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}<span style="font-size: 1rem; color: #aaa"> Probability</span></h1>
                 </div>
                 """, unsafe_allow_html=True)
-                
                 st.markdown("### Analysis")
                 if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
                 if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
@@ -323,7 +323,7 @@ def predict_page():
                 st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
-    # --- INJECT PARTICLE BACKGROUND HERE ---
+    # --- INJECT PARTICLE BACKGROUND ---
     inject_particle_background()
 
     st.title("🏆 Model Performance Leaderboard")
