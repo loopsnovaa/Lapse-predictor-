@@ -267,19 +267,115 @@ if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
 
 def home_page():
-    # Inject the animation
-    add_bg_animation()
+    # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
+    st.markdown("""
+    <style>
+        /* Override global background for homepage */
+        [data-testid="stAppViewContainer"] {
+            background-color: #111 !important; 
+            background-image: none !important; 
+            color: #f2f2f2;
+        }
+        header[data-testid="stHeader"] {
+            background-color: #111 !important;
+        }
+        
+        /* The container for the lines */
+        .lines {
+            position: fixed; 
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            margin: auto;
+            width: 90vw;
+            display: flex;
+            justify-content: space-between;
+            z-index: 0; 
+            pointer-events: none; 
+        }
+
+        .line {
+            position: relative;
+            width: 1px;
+            height: 100%;
+            background: transparent; 
+            overflow: hidden;
+        }
+
+        .line::after {
+            content: '';
+            display: block;
+            position: absolute;
+            height: 15vh;
+            width: 100%;
+            top: -50%;
+            left: 0;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
+            /* SPEED UP: Changed from 7s to 1.5s */
+            animation: drop 3s 0s infinite;
+            animation-fill-mode: forwards;
+            animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
+        }
+
+        /* TIGHTER DELAYS for faster speed */
+        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
+        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
+        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
+        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 0.55s; }
+        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 0.7s; }
+        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 0.85s; }
+        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 1.0s; }
+        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 1.15s; }
+        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 1.3s; }
+        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 1.45s; }
+
+        @keyframes drop {
+            0% { top: -50%; }
+            100% { top: 110%; }
+        }
+    </style>
+    
+    <div class="lines">
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- RESTORED HOMEPAGE UI ---
+    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
+    
+    # Title with the glowing animation
+    st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    
+    st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.title("ChurnAlyse")
-    st.subheader("Predict churn, monitor risk, and save customers proactively.")
     
-    if model:
-        st.success("🟢 ML Engine Loaded (Embedded)")
-    else:
-        st.error("🔴 Model Files Missing. Please check 'models/' folder.")
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if model:
+            st.markdown(f"""
+            <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;">
+                <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("🔴 Error: Model not found. Please run training script.")
 
-    if st.button("Start Now"): go_to("predict")
+    st.markdown("<br>", unsafe_allow_html=True)
+    col4, col5, col6 = st.columns([1, 1, 1])
+    with col5:
+        if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
+            go_to("predict")
 
 def predict_page():
     st.sidebar.title("Navigation")
