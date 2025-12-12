@@ -26,60 +26,67 @@ FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 2. GLOBAL CSS FIXES (THE "NUCLEAR" OPTION)
+# 2. GLOBAL CSS FIXES (WIDENING & LAYERING)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 1. RESET STREAMLIT CONTAINERS */
-    /* Force the main app container to be black and allow elements to sit inside it */
+    /* --- 1. WIDEN THE APP (Fixing the "Empty Space") --- */
+    .block-container {
+        max-width: 95% !important;  /* Widen to 95% of the screen */
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 2rem !important;
+    }
+
+    /* --- 2. FORCE BLACK BACKGROUND --- */
     [data-testid="stAppViewContainer"] {
         background-color: black !important;
         background-image: none !important;
     }
     
-    /* Make the header transparent */
     [data-testid="stHeader"] {
         background-color: transparent !important;
     }
 
-    /* 2. TRANSPARENT CONTENT LAYER */
-    /* The block-container holds your buttons/text. We make it transparent 
-       so the animation behind it is visible, but keep z-index high for clicks. */
-    .block-container {
-        background-color: transparent !important;
-        z-index: 10 !important;
-        position: relative;
-    }
-
-    /* 3. SIDEBAR */
+    /* --- 3. SIDEBAR STYLE --- */
     [data-testid="stSidebar"] {
         background-color: #0b1e33;
         border-right: 1px solid rgba(255,255,255,0.1);
     }
 
-    /* 4. TITLE GLOW ANIMATION */
+    /* --- 4. TEXT GLOW --- */
     @keyframes neon-glow {
-        0%, 100% { 
-            text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
-            color: #fff;
-        }
-        50% { 
-            text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; 
-            color: #ddd;
-        }
+        0%, 100% { text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; color: #fff; }
+        50% { text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; color: #ddd; }
     }
     .glowing-text {
         animation: neon-glow 4s ease-in-out infinite alternate;
     }
     
-    /* 5. UI ELEMENTS */
-    .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
-    .stButton>button:hover { transform: scale(1.02); }
-    .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
-    .stTextInput>div>div>input, .stNumberInput>div>div>input { background-color: #0b1e33 !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+    /* --- 5. UI ELEMENTS --- */
+    .stButton>button { 
+        background-color: #2ecc71 !important; 
+        color: white !important; 
+        border-radius: 8px; 
+        border: none; 
+        padding: 10px 24px; 
+        font-weight: 600; 
+        width: 100%; /* Make buttons fill their column */
+    }
+    .metric-card { 
+        background-color: rgba(255, 255, 255, 0.05); 
+        padding: 20px; 
+        border-radius: 12px; 
+        border: 1px solid rgba(255,255,255,0.1); 
+        margin-bottom: 15px; 
+    }
+    .stTextInput>div>div>input, .stNumberInput>div>div>input { 
+        background-color: #0b1e33 !important; 
+        color: white !important; 
+    }
     
-    /* HIDE SIDEBAR ON HOMEPAGE */
-    .st-emotion-cache-163d83s { display: none; }
+    /* Hide sidebar specifically on Home if needed, otherwise keep it */
+    /* .st-emotion-cache-163d83s { display: none; } */
 </style>
 """, unsafe_allow_html=True)
 
@@ -91,9 +98,9 @@ def inject_falling_lines_bg():
     st.markdown("""
     <style>
         .lines {
-            position: fixed; top: 0; left: 0; right: 0; height: 100vh; margin: auto; width: 90vw;
+            position: fixed; top: 0; left: 0; right: 0; height: 100vh; width: 100vw;
             display: flex; justify-content: space-between; 
-            z-index: 0; /* Behind content */
+            z-index: 0; /* Background layer */
             pointer-events: none; 
         }
         .line { position: relative; width: 1px; height: 100%; background: rgba(255,255,255,0.05); overflow: hidden; }
@@ -102,16 +109,16 @@ def inject_falling_lines_bg():
             background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
             animation: drop 1.5s 0s infinite; animation-fill-mode: forwards; animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
         }
-        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
-        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
-        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
-        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 0.55s; }
-        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 0.7s; }
-        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 0.85s; }
-        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 1.0s; }
-        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 1.15s; }
-        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 1.3s; }
-        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 1.45s; }
+        .line:nth-child(1)::after { background: #FF4500; animation-delay: 0.1s; }
+        .line:nth-child(2)::after { background: #32CD32; animation-delay: 0.3s; }
+        .line:nth-child(3)::after { background: #1E90FF; animation-delay: 0.5s; }
+        .line:nth-child(4)::after { background: #FFD700; animation-delay: 0.7s; }
+        .line:nth-child(5)::after { background: #8A2BE2; animation-delay: 0.9s; }
+        .line:nth-child(6)::after { background: #20B2AA; animation-delay: 1.1s; }
+        .line:nth-child(7)::after { background: #DC143C; animation-delay: 1.3s; }
+        .line:nth-child(8)::after { background: #00FA9A; animation-delay: 1.5s; }
+        .line:nth-child(9)::after { background: #FF1493; animation-delay: 1.7s; }
+        .line:nth-child(10)::after { background: #00BFFF; animation-delay: 1.9s; }
         @keyframes drop { 0% { top: -50%; } 100% { top: 110%; } }
     </style>
     <div class="lines"><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div><div class="line"></div></div>
@@ -123,13 +130,11 @@ def inject_falling_lines_bg():
 @st.cache_resource
 def get_particle_orb_css():
     """Generates the CSS for the Rotating Particle Orb"""
-    total = 200
-    orb_size = 100
+    total = 150 # Reduced slightly for better performance
+    orb_size = 120
     time = 14
-    base_hue = 0 
     
-    # IMPORTANT: We put z-index: 1 on .wrap and z-index: 10 on .block-container (in global css)
-    # This places the orb between the black background and the text.
+    # Z-INDEX 0 puts it behind the form (z-index 1 implied)
     css = f"""
     <style>
     .wrap {{
@@ -141,7 +146,7 @@ def get_particle_orb_css():
         transform-style: preserve-3d;
         perspective: 1000px;
         animation: rotate {time}s infinite linear;
-        z-index: 1; 
+        z-index: 0; 
         pointer-events: none;
     }}
     
@@ -151,10 +156,10 @@ def get_particle_orb_css():
     
     .c {{
         position: absolute;
-        width: 4px; /* INCREASED SIZE FOR VISIBILITY */
+        width: 4px; 
         height: 4px;
         border-radius: 50%;
-        opacity: 1; /* START VISIBLE */
+        opacity: 1; 
     }}
     </style>
     """
@@ -165,7 +170,7 @@ def get_particle_orb_css():
     for i in range(1, total + 1):
         z = rng.randint(0, 360)
         y = rng.randint(0, 360)
-        hue = ((40 / total * i) + base_hue)
+        hue = (40 / total * i)
         
         keyframe_styles += f"""
         .c:nth-child({i}) {{
@@ -174,21 +179,16 @@ def get_particle_orb_css():
             background-color: hsla({hue}, 100%, 50%, 1);
         }}
         @keyframes orbit{i} {{ 
-            0% {{ opacity: 1; transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }} 
-            20% {{ opacity: 1; }}
-            30% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }}
-            80% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); opacity: 1; }}
-            100% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size * 3}px) rotateZ({z}deg); }}
+            0% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }} 
+            100% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }}
         }}
         """
     
     return css + "<style>" + keyframe_styles + "</style>"
 
 def inject_particle_orb():
-    # 1. Inject Styles
     st.markdown(get_particle_orb_css(), unsafe_allow_html=True)
-    # 2. Inject HTML Structure
-    total = 200
+    total = 150
     particles = "".join(['<div class="c"></div>' for _ in range(total)])
     st.markdown(f'<div class="wrap">{particles}</div>', unsafe_allow_html=True)
 
@@ -241,20 +241,19 @@ def go_to(p):
 def home_page():
     inject_falling_lines_bg()
     
-    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("<h1 class='glowing-text' style='font-size: 80px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='opacity: 0.8; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
+    # Widened Layout for the Button
+    c1, c2, c3 = st.columns([1, 2, 1]) 
+    with c2:
         if model:
-            st.markdown("""<div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;"><span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span></div>""", unsafe_allow_html=True)
+            st.markdown("""<div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px; border-radius: 50px; text-align: center; margin-bottom: 20px;"><span style="color: #2ecc71; font-weight: bold;">● ML Engine Loaded</span></div>""", unsafe_allow_html=True)
         else:
             st.error("🔴 Error: Model not found.")
-    st.markdown("<br>", unsafe_allow_html=True)
-    col4, col5, col6 = st.columns([1, 1, 1])
-    with col5:
+        
         if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
             go_to("Predict")
 
@@ -263,6 +262,8 @@ def predict_page():
     inject_particle_orb()
     
     st.title("🔮 Lapse Risk Predictor")
+    
+    # Widened form layout
     c1, c2 = st.columns([1, 1.3])
     with c1:
         with st.form("risk_form"):
@@ -287,7 +288,7 @@ def predict_page():
             loss3 = p4.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
             growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
             
-            submitted = st.form_submit_button("Analyze Risk")
+            submitted = st.form_submit_button("Analyze Risk", use_container_width=True)
             
     if submitted:
         payload = {
@@ -306,11 +307,6 @@ def predict_page():
                     <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}<span style="font-size: 1rem; color: #aaa"> Probability</span></h1>
                 </div>
                 """, unsafe_allow_html=True)
-                st.markdown("### Analysis")
-                if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
-                if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
-                st.markdown("### Strategy")
-                st.info("Offer personalized agent follow-up and premium reminders.")
                 
                 categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
                 ret_gap = max(0, (prev - ret) / prev) if prev > 0 else 0
@@ -323,7 +319,6 @@ def predict_page():
                 st.plotly_chart(fig, use_container_width=True)
 
 def performance_page():
-    # --- ORB ANIMATION ---
     inject_particle_orb()
 
     st.title("🏆 Model Performance Leaderboard")
