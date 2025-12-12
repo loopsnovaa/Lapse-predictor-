@@ -4,354 +4,318 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-import sys
 import json
 
 # ---------------------------------------------------------
-# 1. SETUP & CONFIGURATION
+# SETUP & MODEL LOADING (Cloud-Native Logic)
 # ---------------------------------------------------------
-st.set_page_config(
-    page_title="ChurnAlyse AI", 
-    layout="wide", 
-    page_icon="📉",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="ChurnAlyse", layout="wide", page_icon="📉")
 
-# Constants
-MODEL_DIR = "models"
-MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")
-SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
-FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
-LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
+# Paths
+MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
+SCALER_PATH = "models/scaler_new.joblib"
+FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
+LEADERBOARD_PATH = "models/leaderboard.json"
 
-# ---------------------------------------------------------
-# 2. CUSTOM CSS & ANIMATION (GLOBAL)
-# ---------------------------------------------------------
-st.markdown("""
-<style>
-    /* DEFAULT APP BACKGROUND */
-    [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle at center, #0e2a47 0%, #000000 100%);
-        color: white;
-        overflow-x: hidden;
-    }
-    [data-testid="stSidebar"] {
-        background-color: #0b1e33;
-        border-right: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* Title Glow Animation */
-    @keyframes neon-glow {
-        0%, 100% { 
-            text-shadow: 0 0 1px #fff, 0 0 5px #2ecc71, 0 0 10px #2ecc71; 
-            color: #fff;
-        }
-        50% { 
-            text-shadow: 0 0 2px #fff, 0 0 15px #3498db, 0 0 25px #3498db; 
-            color: #ddd;
-        }
-    }
-    .glowing-text {
-        animation: neon-glow 4s ease-in-out infinite alternate;
-    }
-    
-    /* UI ELEMENTS */
-    .block-container { z-index: 10; position: relative; }
-    .stButton>button { background-color: #2ecc71 !important; color: white !important; border-radius: 8px; border: none; padding: 10px 24px; font-weight: 600; transition: all 0.3s ease; }
-    .stButton>button:hover { transform: scale(1.02); }
-    .metric-card { background-color: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); margin-bottom: 15px; }
-    .stTextInput>div>div>input, .stNumberInput>div>div>input { background-color: #0b1e33 !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
-    
-    /* HIDE SIDEBAR ON HOMEPAGE */
-    .st-emotion-cache-163d83s { display: none; }
-</style>
-""", unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------
-# 3. DATA LOADING
-# ---------------------------------------------------------
 @st.cache_resource
-def load_artifacts():
-    try:
-        model = joblib.load(MODEL_PATH)
-        scaler = joblib.load(SCALER_PATH)
-        feature_order = joblib.load(FEATURE_PATH)
-        return model, scaler, feature_order
-    except:
-        return None, None, []
+def load_model_artifacts():
+    """Load models directly into memory (No API needed)"""
+    try:
+        if not os.path.exists(MODEL_PATH):
+            return None, None, None
+            
+        model = joblib.load(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        features = joblib.load(FEATURE_ORDER_PATH)
+        return model, scaler, features
+    except Exception as e:
+        return None, None, None
 
-def get_leaderboard():
-    if not os.path.exists(LEADERBOARD_PATH): return None
-    try:
-        with open(LEADERBOARD_PATH, 'r') as f: 
-            return json.load(f)
-    except: 
-        return None
+@st.cache_data
+def load_leaderboard():
+    """Load leaderboard directly from JSON file"""
+    try:
+        if not os.path.exists(LEADERBOARD_PATH):
+            return None
+        with open(LEADERBOARD_PATH, 'r') as f:
+            return json.load(f)
+    except:
+        return None
 
-model, scaler, feature_order = load_artifacts()
+# Load artifacts on startup
+model, scaler, feature_order = load_model_artifacts()
 
 # ---------------------------------------------------------
-# 4. PREDICTION LOGIC
+# INTERNAL PREDICTION LOGIC
 # ---------------------------------------------------------
 def make_prediction(payload):
-    if not model or not scaler: return None
-    try:
-        df = pd.DataFrame([payload])
-        final_df = pd.DataFrame()
-        for col in feature_order:
-            final_df[col] = df[col] if col in df.columns else 0.0
-        X_input = scaler.transform(final_df)
-        pred = model.predict(X_input)[0]
-        prob = model.predict_proba(X_input)[0][1]
-        return {"risk": "High" if pred==1 else "Low", "score": prob}
-    except:
-        return None
+    """Runs XGBoost prediction locally in the dashboard"""
+    if not model or not scaler:
+        return None
+    
+    try:
+        # Convert payload to DataFrame
+        df = pd.DataFrame([payload])
+        
+        # Ensure all training columns exist
+        for col in feature_order:
+            if col not in df.columns:
+                df[col] = 0
+                
+        # Sort and Scale
+        df_sorted = df[feature_order]
+        X_scaled = scaler.transform(df_sorted)
+        
+        # Predict
+        prediction = model.predict(X_scaled)[0]
+        probability = model.predict_proba(X_scaled)[0][1]
+        
+        # Explanation Rule (Retention vs Previous)
+        retention = payload.get('RETENTION_POLY_QTY', 0)
+        prev = payload.get('PREV_POLY_INFORCE_QTY', 0)
+        reason = "Stable metrics"
+        if prediction == 1:
+            reason = f"Retention Qty ({retention}) < Previous Qty ({prev})"
+
+        return {
+            "prediction": "LAPSE" if prediction == 1 else "RETAIN",
+            "confidence_score": probability,
+            "primary_driver": reason
+        }
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
+        return None
 
 # ---------------------------------------------------------
-# 5. PAGES
+# CSS STYLING (FIXED)
+# ---------------------------------------------------------
+CUSTOM_CSS = """
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
+[data-testid="stAppViewContainer"] { background-color: #0d3a66 !important; color: white !important; }
+[data-testid="stSidebar"] { background-color: #0f4c81 !important; }
+h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
+
+/* Input Fields */
+.stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
+    color: black !important; background-color: #e6f2ff !important; border-radius: 5px;
+}
+
+.stButton>button {
+    background-color: ##6EEB83 !important; color: black !important; border-radius: 10px;
+    border: none; padding: 10px 25px; font-size: 18px; font-weight: 600; width: 100%;
+}
+.stButton>button:hover { background-color: #27AE60 !important; }
+
+.metric-card {
+    background-color: rgba(255, 255, 255, 0.1); 
+    padding: 20px; 
+    border-radius: 12px; 
+    border: 1px solid rgba(255,255,255,0.2); 
+    margin-bottom: 10px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+.metric-label {
+    font-size: 14px;
+    color: #A0E15E !important;
+    margin-bottom: 5px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: white !important;
+    margin: 0;
+}
+</style>
+"""
+
+
+# ---------------------------------------------------------
+# HELPER FUNCTIONS
+# ---------------------------------------------------------
+def explain_channels(data):
+    ch1, ch2, ch3 = data.get("channel1", 0), data.get("channel2", 0), data.get("channel3", 0)
+    explanation = []
+    if ch1 == 0 and ch2 == 0 and ch3 == 0: explanation.append("Low-engagement channel (walk-in/telemarketing).")
+    if ch1 >= 1: explanation.append("Acquired through advisor/agent (strong follow-up).")
+    if ch2 >= 1: explanation.append("Acquired through digital channel (medium risk).")
+    if ch3 >= 1: explanation.append("Bancassurance channel (moderate stability).")
+    return explanation if explanation else ["Mixed channel combination."]
+
+def explain_risk_factors(data, risk_level):
+    reasons = []
+    if data.get("RETENTION_POLY_QTY", 0) < data.get("PREV_POLY_INFORCE_QTY", 0):
+        reasons.append("⚠️ Portfolio Shrinkage detected (Retention < Previous).")
+    if data.get("LOSS_RATIO", 0) > 1.0:
+        reasons.append("⚠️ Critical Loss Ratio (>100%).")
+    if data.get("premium_amount", 0) > 3000:
+        reasons.append("💰 High Premium (>3000).")
+    if data.get("policy_tenure_years", 0) < 2:
+        reasons.append("⏳ Short tenure (< 2 years).")
+    
+    strategies = ["Offer premium reminders", "Personalized agent follow-up", "Explain long-term benefits"]
+    return reasons, strategies
+
+# ---------------------------------------------------------
+# NAVIGATION
 # ---------------------------------------------------------
 if "page" not in st.session_state: st.session_state.page = "home"
-def go_to(p):
-    st.session_state.page = p
-    st.rerun() 
+def go_to(p): st.session_state.page = p
 
 def home_page():
-    # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
-    st.markdown("""
-    <style>
-        /* Override global background for homepage */
-        [data-testid="stAppViewContainer"] {
-            background-color: #111 !important; 
-            background-image: none !important; 
-            color: #f2f2f2;
-        }
-        header[data-testid="stHeader"] {
-            background-color: #111 !important;
-        }
-        
-        /* The container for the lines */
-        .lines {
-            position: fixed; 
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100%;
-            margin: auto;
-            width: 90vw;
-            display: flex;
-            justify-content: space-between;
-            z-index: 0; 
-            pointer-events: none; 
-        }
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.title("ChurnAlyse")
+    st.subheader("Predict churn, monitor risk, and save customers proactively.")
+    
+    if model:
+        st.success("🟢 ML Engine Loaded (Embedded)")
+    else:
+        st.error("🔴 Model Files Missing. Please check 'models/' folder.")
 
-        .line {
-            position: relative;
-            width: 1px;
-            height: 100%;
-            background: transparent; 
-            overflow: hidden;
-        }
-
-        .line::after {
-            content: '';
-            display: block;
-            position: absolute;
-            height: 15vh;
-            width: 100%;
-            top: -50%;
-            left: 0;
-            background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
-            /* SPEED UP: Changed from 7s to 1.5s */
-            animation: drop 3s 0s infinite;
-            animation-fill-mode: forwards;
-            animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
-        }
-
-        /* TIGHTER DELAYS for faster speed */
-        .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
-        .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
-        .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
-        .line:nth-child(4)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FFD700 75%, #FFD700 100%); animation-delay: 0.55s; }
-        .line:nth-child(5)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #8A2BE2 75%, #8A2BE2 100%); animation-delay: 0.7s; }
-        .line:nth-child(6)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #20B2AA 75%, #20B2AA 100%); animation-delay: 0.85s; }
-        .line:nth-child(7)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #DC143C 75%, #DC143C 100%); animation-delay: 1.0s; }
-        .line:nth-child(8)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00FA9A 75%, #00FA9A 100%); animation-delay: 1.15s; }
-        .line:nth-child(9)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF1493 75%, #FF1493 100%); animation-delay: 1.3s; }
-        .line:nth-child(10)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #00BFFF 75%, #00BFFF 100%); animation-delay: 1.45s; }
-
-        @keyframes drop {
-            0% { top: -50%; }
-            100% { top: 110%; }
-        }
-    </style>
-    
-    <div class="lines">
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-        <div class="line"></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # --- RESTORED HOMEPAGE UI ---
-    st.markdown("<br><br><br><br>", unsafe_allow_html=True)
-    
-    # Title with the glowing animation
-    st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
-    
-    st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
-    
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        if model:
-            st.markdown(f"""
-            <div style="background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 12px 25px; border-radius: 50px; display: inline-block; width: 100%; text-align: center;">
-                <span style="color: #2ecc71; font-weight: bold; font-size: 16px;">● ML Engine Loaded</span>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.error("🔴 Error: Model not found. Please run training script.")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    col4, col5, col6 = st.columns([1, 1, 1])
-    with col5:
-        if st.button("Start Risk Analysis", use_container_width=True, key='home_btn'): 
-            go_to("Predict")
+    if st.button("Start Now"): go_to("predict")
 
 def predict_page():
-    st.title("🔮 Lapse Risk Predictor")
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_pred", on_change=lambda: go_to(st.session_state.nav_pred.lower()))
+    st.title("Predict Policy Lapse Risk")
 
-    c1, c2 = st.columns([1, 1.3])
-    with c1:
-        with st.form("risk_form"):
-            st.markdown("### 1. Customer")
-            c3, c4 = st.columns(2)
-            age = c3.number_input("Age", 18, 100, 30, key='age')
-            tenure = c4.number_input("Tenure (Yrs)", 0.0, 50.0, 3.5, key='tenure')
-            prem = st.number_input("Premium Amount", 0, 100000, 3500, key='prem')
-            
-            st.markdown("### 2. Channels")
-            ch1, ch2, ch3 = st.columns(3)
-            agent_ch = ch1.checkbox("Agent", True)
-            digital_ch = ch2.checkbox("Digital", False)
-            banca_ch = ch3.checkbox("Bancassurance", False)
+    col1, col2 = st.columns([1, 1.2])
+    with col1:
+        with st.form("main_form"):
+            st.markdown("### 1. Customer")
+            age = st.number_input("Age", 18, 99, 30)
+            prem = st.number_input("Premium", 1, 100000, 3500)
+            ten = st.number_input("Tenure (Yrs)", 0.0, 50.0, 1.5)
+            ch1 = st.number_input("Agent Channel", 0, 1, 0)
+            ch2 = st.number_input("Digital Channel", 0, 1, 1)
+            ch3 = st.number_input("Bancassurance", 0, 1, 0)
+            
+            st.markdown("### 2. Agency Metrics")
+            ret_qty = st.number_input("Retained Qty", 0, 10000, 90)
+            prev_qty = st.number_input("Prev. Qty", 0, 10000, 100)
+            curr_qty = st.number_input("Curr. Qty", 0, 10000, 90)
+            loss_r = st.number_input("Loss Ratio", 0.0, 500.0, 65.0)
+            loss_3 = st.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
+            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
+            
+            submit = st.form_submit_button("Predict")
 
-            st.markdown("### 3. Metrics (High-Accuracy Drivers)")
-            p1, p2 = st.columns(2)
-            ret = p1.number_input("Retained Qty", 0, 5000, 90, help="RETENTION_POLY_QTY")
-            prev = p2.number_input("Previous Qty", 0, 5000, 100, help="PREV_POLY_INFORCE_QTY")
-            
-            p3, p4 = st.columns(2)
-            loss = p3.number_input("Loss Ratio", 0.0, 500.0, 65.0)
-            loss3 = p4.number_input("3-Yr Loss Ratio", 0.0, 500.0, 60.0)
-            growth = st.number_input("Growth %", -100.0, 100.0, 2.5)
-            
-            submitted = st.form_submit_button("Analyze Risk")
-            
-    if submitted:
-        payload = {
-            "AGE": age, "PREMIUM": prem, "TENURE": tenure,
-            "AGENT_CHANNEL": int(agent_ch), "DIGITAL_CHANNEL": int(digital_ch), "BANCASSURANCE": int(banca_ch),
-            "RETENTION_POLY_QTY": ret, "PREV_POLY_INFORCE_QTY": prev,
-            "LOSS_RATIO": loss, "LOSS_RATIO_3YR": loss3, "GROWTH_RATE_3YR": growth
-        }
-        res = make_prediction(payload)
-        with c2:
-            if res:
-                color = "#ef4444" if res['risk'] == "High" else "#2ecc71"
-                st.markdown(f"""
-                <div class="metric-card" style="border-left: 8px solid {color}; text-align: left;">
-                    <h3 style="color:{color}; margin:0;">RISK LEVEL: {res['risk'].upper()}</h3>
-                    <h1 style="font-size: 4rem; margin: 10px 0;">{res['score']:.1%}<span style="font-size: 1rem; color: #aaa"> Probability</span></h1>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown("### Analysis")
-                if ret < prev: st.warning("⚠️ Portfolio Shrinkage detected (Retention Gap).")
-                if loss > 100: st.error("⚠️ Critical Loss Ratio (>100%). Review claims.")
-                st.markdown("### Strategy")
-                st.info("Offer personalized agent follow-up and premium reminders.")
-                
-                categories = ['Retention Gap', 'Loss Ratio', 'Growth Lag']
-                ret_gap = max(0, (prev - ret) / prev) if prev > 0 else 0
-                loss_norm = min(1, loss / 100.0)
-                growth_inv = min(1, max(0, (10 - growth)/20))
+    if submit:
+        # Macro Data
+        api_payload = {
+            "RETENTION_POLY_QTY": ret_qty, "PREV_POLY_INFORCE_QTY": prev_qty,
+            "POLY_INFORCE_QTY": curr_qty, "LOSS_RATIO": loss_r,
+            "LOSS_RATIO_3YR": loss_3, "GROWTH_RATE_3YR": growth
+        }
+        # Micro Data
+        full_data = {**api_payload, "premium_amount": prem, "policy_tenure_years": ten, 
+                     "channel1": ch1, "channel2": ch2, "channel3": ch3}
+        
+        # Internal Prediction Call (No API)
+        res = make_prediction(api_payload)
+        
+        with col2:
+            if res:
+                prob = res['confidence_score']
+                risk = "High" if res['prediction'] == "LAPSE" else "Low"
+                color = "#d00000" if risk == "High" else "#A0E15E"
+                
+                st.markdown(f"""
+                <div style="
+                    background-color: rgba(208, 0, 0, 0.2);
+                    border: 2px solid #d00000;
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin-bottom: 20px;
+                ">
+                <h3 style="color:white; margin:0;">
+                    Risk Level: <span style="color:#ff4d4d">{risk}</span>
+                </h3>
+                <h1 style="color:white; margin:10px 0;">
+                   {prob*100:.1f}% <span style="font-size: 20px">Probability</span>
+                </h1>
+               <p style="color:#ccc;">{res['primary_driver']}</p>
+               </div>
+               """, unsafe_allow_html=True)
 
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(r=[ret_gap, loss_norm, growth_inv], theta=categories, fill='toself', name='Current Policy', line_color=color))
-                fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font=dict(color="white"), margin=dict(t=20, b=20, l=40, r=40))
-                st.plotly_chart(fig, use_container_width=True)
+                
+                reasons, strats = explain_risk_factors(full_data, risk)
+                st.markdown("### Analysis")
+                for r in reasons: st.write(r)
+                if risk == "High":
+                    st.markdown("### Strategy")
+                    for s in strats: 
+                         st.markdown(f"""
+                         <div style="
+                              background-color: rgba(46, 204, 113, 0.25);
+                              border: 2px solid #2ECC71;
+                              padding: 15px 20px;
+                              border-radius: 12px;
+                              margin-bottom: 10px;
+                              color: white;
+                              font-size: 16px;
+                              font-weight: 500;
+                         ">
+                              {s}
+                        </div>
+                        """, unsafe_allow_html=True)
 
 def performance_page():
-    st.title("🏆 Model Performance Leaderboard")
-    data = get_leaderboard()
-    if not data:
-        st.error("❌ Leaderboard data not found. Please ensure 'train_full.py' ran successfully.")
-        return
+    st.sidebar.title("Navigation")
+    st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
+    st.title("Model Performance Leaderboard")
+    
+    leaderboard = load_leaderboard()
+    if not leaderboard:
+        st.warning("⚠️ Leaderboard data not found. Run `train_leaderboard.py` locally and upload 'models/leaderboard.json'.")
+        return
 
-    df = pd.DataFrame.from_dict(data, orient='index')
-    if 'accuracy' in df.columns:
-        df_sorted = df.sort_values(by='accuracy', ascending=False)
-    else:
-        df_sorted = df
-        st.warning("Could not sort metrics as 'accuracy' column is missing.")
+    # --- PREPARE DATA ---
+    model_data = []
+    for name, metrics in leaderboard.items():
+        model_data.append({
+            "Model": name,
+            "Accuracy": metrics.get('accuracy', 0),
+            "Precision": metrics.get('precision', 0),
+            "Recall": metrics.get('recall', 0),
+            "F1 Score": metrics.get('f1_score', 0),
+            "AUC": metrics.get('auc', 0)
+        })
+    
+    # Sort by Accuracy
+    df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
 
-    st.markdown("---")
-    for model_name, metrics in df_sorted.iterrows():
-        st.markdown(f"### {model_name}")
-        cols = st.columns(5)
-        metric_keys = ["accuracy", "precision", "recall", "f1_score", "auc"]
-        for i, key in enumerate(metric_keys):
-            value = metrics.get(key, 0.0)
-            if key == "accuracy":
-                display_value = f"{value:.2%}"
-            else:
-                display_value = f"{value:.3f}"
-            
-            with cols[i]:
-                st.markdown(f"""
-                <div class="metric-card" style="text-align: center; padding: 10px;">
-                    <p style="margin:0; font-size: 14px; color: #aaa">{key.upper().replace('_', ' ')}</p>
-                    <h4 style="margin: 5px 0; font-size: 1.5rem; color: #2ecc71;">{display_value}</h4>
-                </div>
-                """, unsafe_allow_html=True)
-        st.markdown("---")
+    # --- RENDER MODEL CARDS (WITH BOXES) ---
+    for index, row in df.iterrows():
+        st.markdown(f"### {row['Model']}")
+        
+        c1, c2, c3, c4, c5 = st.columns(5)
+        
+        # Helper for cleaner code
+        def metric_box(label, value):
+            return f"""
+            <div class="metric-card">
+                <div class="metric-label">{label}</div>
+                <div class="metric-value">{value}</div>
+            </div>
+            """
+            
+        c1.markdown(metric_box("Accuracy", f"{row['Accuracy']:.1%}"), unsafe_allow_html=True)
+        c2.markdown(metric_box("Precision", f"{row['Precision']:.3f}"), unsafe_allow_html=True)
+        c3.markdown(metric_box("Recall", f"{row['Recall']:.3f}"), unsafe_allow_html=True)
+        c4.markdown(metric_box("F1 Score", f"{row['F1 Score']:.3f}"), unsafe_allow_html=True)
+        c5.markdown(metric_box("AUC", f"{row['AUC']:.3f}"), unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# 6. MAIN NAVIGATION
-# ---------------------------------------------------------
-def main():
-    if st.session_state.page in ("home", "Home"):
-        st.markdown('<style> [data-testid="stSidebar"] {display: none;} </style>', unsafe_allow_html=True)
-    else:
-        with st.sidebar:
-            st.title("Navigation")
-            page = st.radio("Go to", ["Home", "Predict", "Performance"], label_visibility="collapsed", key='nav_main', index=["Home", "Predict", "Performance"].index(st.session_state.page))
-            st.markdown("---")
-            if model:
-                st.caption(f"🟢 Model Loaded")
-            else:
-                st.caption("🔴 No Model Found")
-            
-            if page != st.session_state.page:
-                st.session_state.page = page
-                st.rerun()
-
-    if st.session_state.page in ("home", "Home"):
-        home_page()
-    elif st.session_state.page == "Predict":
-        predict_page()
-    else: 
-        performance_page()
-
-if __name__ == "__main__":
-    main()
+if st.session_state.page == "home": home_page()
+elif st.session_state.page == "predict": predict_page()
+else: performance_page() to the home page i want to add a background animation 
