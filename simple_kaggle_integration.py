@@ -26,31 +26,35 @@ FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
 
 # ---------------------------------------------------------
-# 2. GLOBAL CSS & THEME OVERRIDES
+# 2. GLOBAL CSS FIXES (THE "NUCLEAR" OPTION)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
-    /* 1. FORCE BLACK BACKGROUND & RESET CONTAINERS */
+    /* 1. RESET STREAMLIT CONTAINERS */
+    /* Force the main app container to be black and allow elements to sit inside it */
     [data-testid="stAppViewContainer"] {
         background-color: black !important;
         background-image: none !important;
     }
     
+    /* Make the header transparent */
     [data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0) !important;
+        background-color: transparent !important;
     }
 
-    /* 2. SIDEBAR STYLE */
+    /* 2. TRANSPARENT CONTENT LAYER */
+    /* The block-container holds your buttons/text. We make it transparent 
+       so the animation behind it is visible, but keep z-index high for clicks. */
+    .block-container {
+        background-color: transparent !important;
+        z-index: 10 !important;
+        position: relative;
+    }
+
+    /* 3. SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: #0b1e33;
         border-right: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* 3. TRANSPARENT CONTENT (So we can see animation behind) */
-    .block-container {
-        background-color: transparent !important;
-        z-index: 10; /* Content sits on top */
-        position: relative;
     }
 
     /* 4. TITLE GLOW ANIMATION */
@@ -87,9 +91,9 @@ def inject_falling_lines_bg():
     st.markdown("""
     <style>
         .lines {
-            position: fixed; top: 0; left: 0; right: 0; height: 100%; margin: auto; width: 90vw;
+            position: fixed; top: 0; left: 0; right: 0; height: 100vh; margin: auto; width: 90vw;
             display: flex; justify-content: space-between; 
-            z-index: 0; /* Behind Content */
+            z-index: 0; /* Behind content */
             pointer-events: none; 
         }
         .line { position: relative; width: 1px; height: 100%; background: rgba(255,255,255,0.05); overflow: hidden; }
@@ -98,7 +102,6 @@ def inject_falling_lines_bg():
             background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 75%, #ffffff 100%);
             animation: drop 1.5s 0s infinite; animation-fill-mode: forwards; animation-timing-function: cubic-bezier(0.4, 0.26, 0, 0.97);
         }
-        /* Specific Colors */
         .line:nth-child(1)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #FF4500 75%, #FF4500 100%); animation-delay: 0.1s; }
         .line:nth-child(2)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #32CD32 75%, #32CD32 100%); animation-delay: 0.25s; }
         .line:nth-child(3)::after { background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #1E90FF 75%, #1E90FF 100%); animation-delay: 0.4s; }
@@ -120,12 +123,13 @@ def inject_falling_lines_bg():
 @st.cache_resource
 def get_particle_orb_css():
     """Generates the CSS for the Rotating Particle Orb"""
-    total = 200 # Reduced slightly for performance
+    total = 200
     orb_size = 100
     time = 14
     base_hue = 0 
     
-    # We place .wrap at Z-Index 1. Content is at Z-Index 10.
+    # IMPORTANT: We put z-index: 1 on .wrap and z-index: 10 on .block-container (in global css)
+    # This places the orb between the black background and the text.
     css = f"""
     <style>
     .wrap {{
@@ -135,9 +139,9 @@ def get_particle_orb_css():
         width: 0; 
         height: 0; 
         transform-style: preserve-3d;
-        perspective: 1000px; /* Crucial for 3D effect */
+        perspective: 1000px;
         animation: rotate {time}s infinite linear;
-        z-index: 1; /* Visible above background, below content */
+        z-index: 1; 
         pointer-events: none;
     }}
     
@@ -147,11 +151,12 @@ def get_particle_orb_css():
     
     .c {{
         position: absolute;
-        width: 3px;
-        height: 3px;
+        width: 4px; /* INCREASED SIZE FOR VISIBILITY */
+        height: 4px;
         border-radius: 50%;
-        opacity: 0; 
+        opacity: 1; /* START VISIBLE */
     }}
+    </style>
     """
     
     rng = random.Random(42) 
@@ -169,6 +174,7 @@ def get_particle_orb_css():
             background-color: hsla({hue}, 100%, 50%, 1);
         }}
         @keyframes orbit{i} {{ 
+            0% {{ opacity: 1; transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }} 
             20% {{ opacity: 1; }}
             30% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); }}
             80% {{ transform: rotateZ(-{z}deg) rotateY({y}deg) translateX({orb_size}px) rotateZ({z}deg); opacity: 1; }}
