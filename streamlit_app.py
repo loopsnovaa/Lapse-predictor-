@@ -248,16 +248,50 @@ def explain_channels(data):
 
 def explain_risk_factors(data, risk_level):
     reasons = []
+    # Identify Risk Drivers
     if data.get("RETENTION_POLY_QTY", 0) < data.get("PREV_POLY_INFORCE_QTY", 0):
-        reasons.append("⚠️ Portfolio Shrinkage detected (Retention < Previous).")
-    if data.get("LOSS_RATIO", 0) > 1.0:
+        reasons.append("⚠️ Portfolio Shrinkage (Retention < Previous).")
+    if data.get("LOSS_RATIO", 0) > 100.0:
         reasons.append("⚠️ Critical Loss Ratio (>100%).")
     if data.get("premium_amount", 0) > 3000:
         reasons.append("💰 High Premium (>3000).")
     if data.get("policy_tenure_years", 0) < 2:
-        reasons.append("⏳ Short tenure (< 2 years).")
+        reasons.append("⏳ Early Stage Policy (< 2 years).")
+
+    strategies = []
     
-    strategies = ["Offer premium reminders", "Personalized agent follow-up", "Explain long-term benefits"]
+    # 1. Tenure Strategy
+    tenure = data.get("policy_tenure_years", 0)
+    if tenure < 1.0:
+        strategies.append("🆕 **Onboarding:** Schedule 'Welcome Call' to reinforce policy value & benefits.")
+    elif tenure < 3.0:
+        strategies.append("🔄 **Engagement:** Send 'Policy Anniversary' review checking coverage adequacy.")
+    else:
+        strategies.append("💎 **Loyalty:** Offer 'Tenure-Based Discount' or upgrade options for loyalty.")
+
+    # 2. Financial Strategy (Premium)
+    prem = data.get("premium_amount", 0)
+    if prem > 5000:
+         strategies.append("💼 **VIP Retention:** Assign Senior Relationship Manager for personal financial review.")
+    elif prem > 3000:
+         strategies.append("💳 **Flexibility:** Offer 'Premium Holiday' or switch to monthly payment mode.")
+    
+    # 3. Channel Strategy
+    if data.get("channel1", 0) == 1: # Agent
+        strategies.append("🤝 **Agent Prompt:** Trigger urgent task for Agent: 'Client at Risk - Call ASAP'.")
+    elif data.get("channel2", 0) == 1: # Digital
+        strategies.append("📧 **Digital Campaign:** Send automated 'Why Stay?' email series with success stories.")
+    elif data.get("channel3", 0) == 1: # Bancassurance
+        strategies.append("🏦 **Bank Partner:** Notify Bank RM to discuss insurance during next account review.")
+
+    # 4. Critical Risk Action (if High Risk)
+    if risk_level == "High":
+        strategies.insert(0, "🚨 **Immediate Action:** Offer one-time 'Lapse Prevention Discount' valid for 7 days.")
+
+    # Ensure we have something
+    if not strategies:
+        strategies = ["Offer premium reminders via SMS/Email.", "Conduct a satisfaction survey.", "Highlight loss of accumulated benefits."]
+
     return reasons, strategies
 
 # ---------------------------------------------------------
