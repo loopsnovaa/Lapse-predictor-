@@ -393,6 +393,15 @@ def home_page():
             go_to("predict")
 
 def predict_page():
+    # --- FORCE BLACK BACKGROUND FOR PREDICT PAGE ---
+    st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] {
+        background-color: #000000 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_pred", on_change=lambda: go_to(st.session_state.nav_pred.lower()))
     st.title("Predict Policy Lapse Risk")
