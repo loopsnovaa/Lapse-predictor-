@@ -582,6 +582,42 @@ def performance_page():
         
         st.markdown("<br>", unsafe_allow_html=True)
 
+    # --- ADDED: COMPARATIVE GRAPH ---
+    st.markdown("---")
+    st.subheader("📊 Comparative Analysis")
+    
+    # Prepare data for Plotly
+    models = df['Model'].tolist()
+    metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
+    
+    fig = go.Figure()
+    
+    # Add a bar trace for each metric
+    for metric in metrics:
+        fig.add_trace(go.Bar(
+            name=metric,
+            x=models,
+            y=df[metric],
+            text=df[metric].apply(lambda x: f"{x:.2f}"),
+            textposition='auto'
+        ))
+
+    # Update Layout
+    fig.update_layout(
+        barmode='group',
+        height=500,
+        margin=dict(t=50, b=50, l=50, r=50),
+        xaxis_title="Machine Learning Models",
+        yaxis_title="Score (0-1)",
+        legend_title="Metrics",
+        template="plotly_dark",  # Fits the dark theme
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family="DM Sans", size=14, color="white")
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
 if st.session_state.page == "home": home_page()
 elif st.session_state.page == "predict": predict_page()
 else: performance_page()
