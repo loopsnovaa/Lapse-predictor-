@@ -280,6 +280,21 @@ def home_page():
             background-color: #111 !important;
         }
         
+        /* --- GLOWING TEXT CSS (FIX ADDED HERE) --- */
+        .glowing-text {
+            color: #FFFFFF;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 5px #2ECC71, 0 0 10px #2ECC71, 0 0 20px #2ECC71;
+            }
+            to {
+                text-shadow: 0 0 10px #2ECC71, 0 0 20px #2ECC71, 0 0 30px #2ECC71, 0 0 40px #2ECC71;
+            }
+        }
+        
         /* The container for the lines */
         .lines {
             position: fixed; 
