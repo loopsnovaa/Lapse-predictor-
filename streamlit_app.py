@@ -584,7 +584,7 @@ def performance_page():
 
     # --- ADDED: COMPARATIVE GRAPH ---
     st.markdown("---")
-    st.subheader("📊 Comparative Analysis")
+    st.subheader("Comparative Analysis")
     
     # Prepare data for Plotly
     models = df['Model'].tolist()
