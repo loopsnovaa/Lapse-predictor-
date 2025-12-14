@@ -136,7 +136,7 @@ html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
 [data-testid="stAppViewContainer"] { background-color: transparent !important; color: white !important; }
 
 /* --- CHANGED: Sidebar color to match the top header bar --- */
-[data-testid="stSidebar"] { background-color: #0f4c81 !important; }
+[data-testid="stSidebar"] { background-color: #0068C9 !important; }
 
 h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
 
