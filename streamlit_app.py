@@ -134,7 +134,10 @@ CUSTOM_CSS = """
 /* Base Styles */
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif !important; }
 [data-testid="stAppViewContainer"] { background-color: transparent !important; color: white !important; }
-[data-testid="stSidebar"] { background-color: #0f4c81 !important; }
+
+/* --- CHANGED: Sidebar color to match the top header bar --- */
+[data-testid="stSidebar"] { background-color: #0E1117 !important; }
+
 h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
 
 /* Input Fields */
