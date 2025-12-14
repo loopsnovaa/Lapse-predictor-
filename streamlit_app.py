@@ -263,30 +263,30 @@ def explain_risk_factors(data, risk_level):
     # 1. Tenure Strategy
     tenure = data.get("policy_tenure_years", 0)
     if tenure < 1.0:
-        strategies.append("🆕 **Onboarding:** Schedule 'Welcome Call' to reinforce policy value & benefits.")
+        strategies.append("🆕 Onboarding: Schedule 'Welcome Call' to reinforce policy value & benefits.")
     elif tenure < 3.0:
-        strategies.append("🔄 **Engagement:** Send 'Policy Anniversary' review checking coverage adequacy.")
+        strategies.append("🔄 Engagement: Send 'Policy Anniversary' review checking coverage adequacy.")
     else:
-        strategies.append("💎 **Loyalty:** Offer 'Tenure-Based Discount' or upgrade options for loyalty.")
+        strategies.append("💎 Loyalty: Offer 'Tenure-Based Discount' or upgrade options for loyalty.")
 
     # 2. Financial Strategy (Premium)
     prem = data.get("premium_amount", 0)
     if prem > 5000:
-         strategies.append("💼 **VIP Retention:** Assign Senior Relationship Manager for personal financial review.")
+         strategies.append("💼 VIP Retention: Assign Senior Relationship Manager for personal financial review.")
     elif prem > 3000:
-         strategies.append("💳 **Flexibility:** Offer 'Premium Holiday' or switch to monthly payment mode.")
+         strategies.append("💳 Flexibility: Offer 'Premium Holiday' or switch to monthly payment mode.")
     
     # 3. Channel Strategy
     if data.get("channel1", 0) == 1: # Agent
-        strategies.append("🤝 **Agent Prompt:** Trigger urgent task for Agent: 'Client at Risk - Call ASAP'.")
+        strategies.append("🤝 Agent Prompt: Trigger urgent task for Agent: 'Client at Risk - Call ASAP'.")
     elif data.get("channel2", 0) == 1: # Digital
-        strategies.append("📧 **Digital Campaign:** Send automated 'Why Stay?' email series with success stories.")
+        strategies.append("📧 Digital Campaign: Send automated 'Why Stay?' email series with success stories.")
     elif data.get("channel3", 0) == 1: # Bancassurance
-        strategies.append("🏦 **Bank Partner:** Notify Bank RM to discuss insurance during next account review.")
+        strategies.append("🏦 Bank Partner: Notify Bank Agent to discuss insurance during next account review.")
 
     # 4. Critical Risk Action (if High Risk)
     if risk_level == "High":
-        strategies.insert(0, "🚨 **Immediate Action:** Offer one-time 'Lapse Prevention Discount' valid for 7 days.")
+        strategies.insert(0, "🚨 Immediate Action: Offer one-time 'Lapse Prevention Discount' valid for 7 days.")
 
     # Ensure we have something
     if not strategies:
