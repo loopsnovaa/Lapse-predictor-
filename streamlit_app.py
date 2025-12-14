@@ -525,7 +525,7 @@ def predict_page():
 def performance_page():
     st.sidebar.title("Navigation")
     st.sidebar.radio("Go to:", ["Predict", "Performance"], key="nav_perf", on_change=lambda: go_to(st.session_state.nav_perf.lower()))
-    st.title("Model Performance Leaderboard")
+    st.title("Model Comparative Analysis")
     
     leaderboard = load_leaderboard()
     if not leaderboard:
