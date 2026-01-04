@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 MODEL_DIR = "models"
-MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")  # FIXED PATH
+MODEL_PATH = os.path.join(MODEL_DIR, "best_model.joblib")  
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler_new.joblib")
 FEATURE_PATH = os.path.join(MODEL_DIR, "feature_names.joblib")
 LEADERBOARD_PATH = os.path.join(MODEL_DIR, "leaderboard.json")
