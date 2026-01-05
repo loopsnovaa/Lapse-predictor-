@@ -6,12 +6,8 @@ import joblib
 import os
 import json
 
-# ---------------------------------------------------------
-# SETUP & MODEL LOADING (Cloud-Native Logic)
-# ---------------------------------------------------------
 st.set_page_config(page_title="ChurnAlyse", layout="wide", page_icon="📉")
 
-# Paths
 MODEL_PATH = "models/xgboost_optimized_model_new.joblib"
 SCALER_PATH = "models/scaler_new.joblib"
 FEATURE_ORDER_PATH = "models/training_feature_order_new.joblib"
@@ -42,12 +38,7 @@ def load_leaderboard():
     except:
         return None
 
-# Load artifacts on startup
 model, scaler, feature_order = load_model_artifacts()
-
-# ---------------------------------------------------------
-# CSS STYLING & ANIMATION
-# ---------------------------------------------------------
 def add_bg_animation():
     st.markdown("""
     <style>
@@ -196,32 +187,24 @@ h1, h2, h3, h4, p, label, .stMarkdown { color: white !important; }
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# INTERNAL PREDICTION LOGIC
-# ---------------------------------------------------------
 def make_prediction(payload):
     """Runs XGBoost prediction locally in the dashboard"""
     if not model or not scaler:
         return None
     
     try:
-        # Convert payload to DataFrame
         df = pd.DataFrame([payload])
         
-        # Ensure all training columns exist
         for col in feature_order:
             if col not in df.columns:
                 df[col] = 0
                 
-        # Sort and Scale
         df_sorted = df[feature_order]
         X_scaled = scaler.transform(df_sorted)
         
-        # Predict
         prediction = model.predict(X_scaled)[0]
         probability = model.predict_proba(X_scaled)[0][1]
         
-        # Explanation Rule (Retention vs Previous)
         retention = payload.get('RETENTION_POLY_QTY', 0)
         prev = payload.get('PREV_POLY_INFORCE_QTY', 0)
         reason = "Stable metrics"
@@ -236,10 +219,7 @@ def make_prediction(payload):
     except Exception as e:
         st.error(f"Prediction Error: {e}")
         return None
-
-# ---------------------------------------------------------
-# HELPER FUNCTIONS
-# ---------------------------------------------------------
+        
 def explain_channels(data):
     ch1, ch2, ch3 = data.get("channel1", 0), data.get("channel2", 0), data.get("channel3", 0)
     explanation = []
@@ -251,7 +231,6 @@ def explain_channels(data):
 
 def explain_risk_factors(data, risk_level):
     reasons = []
-    # Identify Risk Drivers
     if data.get("RETENTION_POLY_QTY", 0) < data.get("PREV_POLY_INFORCE_QTY", 0):
         reasons.append("⚠️ Portfolio Shrinkage (Retention < Previous).")
     if data.get("LOSS_RATIO", 0) > 100.0:
@@ -263,7 +242,7 @@ def explain_risk_factors(data, risk_level):
 
     strategies = []
     
-    # 1. Tenure Strategy
+    #  Tenure Strategy
     tenure = data.get("policy_tenure_years", 0)
     if tenure < 1.0:
         strategies.append("🆕 Onboarding: Schedule 'Welcome Call' to reinforce policy value & benefits.")
@@ -272,14 +251,14 @@ def explain_risk_factors(data, risk_level):
     else:
         strategies.append("💎 Loyalty: Offer 'Tenure-Based Discount' or upgrade options for loyalty.")
 
-    # 2. Financial Strategy (Premium)
+    #  Financial Strategy (Premium)
     prem = data.get("premium_amount", 0)
     if prem > 5000:
          strategies.append("💼 VIP Retention: Assign Senior Relationship Manager for personal financial review.")
     elif prem > 3000:
          strategies.append("💳 Flexibility: Offer 'Premium Holiday' or switch to monthly payment mode.")
     
-    # 3. Channel Strategy
+    # Channel Strategy
     if data.get("channel1", 0) == 1: # Agent
         strategies.append("🤝 Agent Prompt: Trigger urgent task for Agent: 'Client at Risk - Call ASAP'.")
     elif data.get("channel2", 0) == 1: # Digital
@@ -287,24 +266,19 @@ def explain_risk_factors(data, risk_level):
     elif data.get("channel3", 0) == 1: # Bancassurance
         strategies.append("🏦 Bank Partner: Notify Bank Agent to discuss insurance during next account review.")
 
-    # 4. Critical Risk Action (if High Risk)
+    #  Critical Risk Action (if High Risk)
     if risk_level == "High":
         strategies.insert(0, "🚨 Immediate Action: Offer one-time 'Lapse Prevention Discount' valid for 7 days.")
 
-    # Ensure we have something
     if not strategies:
         strategies = ["Offer premium reminders via SMS/Email.", "Conduct a satisfaction survey.", "Highlight loss of accumulated benefits."]
 
     return reasons, strategies
 
-# ---------------------------------------------------------
-# NAVIGATION
-# ---------------------------------------------------------
 if "page" not in st.session_state: st.session_state.page = "home"
 def go_to(p): st.session_state.page = p
 
 def home_page():
-    # --- HOMEPAGE SPECIFIC BACKGROUND CSS ---
     st.markdown("""
     <style>
         /* Override global background for homepage */
@@ -402,10 +376,8 @@ def home_page():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- RESTORED HOMEPAGE UI ---
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     
-    # Title with the glowing animation
     st.markdown("<h1 class='glowing-text' style='font-size: 72px; margin-bottom: 10px; text-align: center;'>ChurnAlyse</h1>", unsafe_allow_html=True)
     
     st.markdown("<h3 style='opacity: 0.9; font-weight: 300; text-align: center;'>Predict churn, monitor risk, and save customers proactively.</h3>", unsafe_allow_html=True)
@@ -430,7 +402,7 @@ def home_page():
             go_to("predict")
 
 def predict_page():
-    # --- FORCE BLACK BACKGROUND FOR PREDICT PAGE ---
+   
     st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -465,24 +437,22 @@ def predict_page():
             submit = st.form_submit_button("Predict")
 
     if submit:
-        # Macro Data
         api_payload = {
             "RETENTION_POLY_QTY": ret_qty, "PREV_POLY_INFORCE_QTY": prev_qty,
             "POLY_INFORCE_QTY": curr_qty, "LOSS_RATIO": loss_r,
             "LOSS_RATIO_3YR": loss_3, "GROWTH_RATE_3YR": growth
         }
-        # Micro Data
+       
         full_data = {**api_payload, "premium_amount": prem, "policy_tenure_years": ten, 
                      "channel1": ch1, "channel2": ch2, "channel3": ch3}
         
-        # Internal Prediction Call (No API)
         res = make_prediction(api_payload)
         
         with col2:
             if res:
                 prob = res['confidence_score']
                 risk = "High" if res['prediction'] == "LAPSE" else "Low"
-                # Updated Logic for Green/Red display
+             
                 color = "#d00000" if risk == "High" else "#2ECC71"
                 
                 st.markdown(f"""
@@ -526,7 +496,6 @@ def predict_page():
                         """, unsafe_allow_html=True)
 
 def performance_page():
-    # --- FORCE BLACK BACKGROUND FOR PERFORMANCE PAGE ---
     st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] {
@@ -544,7 +513,6 @@ def performance_page():
         st.warning("⚠️ Leaderboard data not found. Run `train_leaderboard.py` locally and upload 'models/leaderboard.json'.")
         return
 
-    # --- PREPARE DATA ---
     model_data = []
     for name, metrics in leaderboard.items():
         model_data.append({
@@ -556,16 +524,13 @@ def performance_page():
             "AUC": metrics.get('auc', 0)
         })
     
-    # Sort by Accuracy
     df = pd.DataFrame(model_data).sort_values(by="Accuracy", ascending=False)
 
-    # --- RENDER MODEL CARDS (WITH BOXES) ---
     for index, row in df.iterrows():
         st.markdown(f"### {row['Model']}")
         
         c1, c2, c3, c4, c5 = st.columns(5)
         
-        # Helper for cleaner code
         def metric_box(label, value):
             return f"""
             <div class="metric-card">
@@ -582,17 +547,14 @@ def performance_page():
         
         st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- ADDED: COMPARATIVE GRAPH ---
     st.markdown("---")
     st.subheader("Comparative Analysis")
     
-    # Prepare data for Plotly
     models = df['Model'].tolist()
     metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
     
     fig = go.Figure()
     
-    # Add a bar trace for each metric
     for metric in metrics:
         fig.add_trace(go.Bar(
             name=metric,
@@ -602,7 +564,6 @@ def performance_page():
             textposition='auto'
         ))
 
-    # Update Layout
     fig.update_layout(
         barmode='group',
         height=500,
@@ -610,7 +571,7 @@ def performance_page():
         xaxis_title="Machine Learning Models",
         yaxis_title="Score (0-1)",
         legend_title="Metrics",
-        template="plotly_dark",  # Fits the dark theme
+        template="plotly_dark",  
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         font=dict(family="DM Sans", size=14, color="white")
