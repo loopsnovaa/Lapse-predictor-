@@ -175,7 +175,6 @@ def page_performance():
 
     df = pd.DataFrame.from_dict(data, orient='index').sort_values(by="accuracy", ascending=False)
     
-    # Top Card
     best = df.iloc[0]
     st.markdown(f"""
     <div class="metric-card">
